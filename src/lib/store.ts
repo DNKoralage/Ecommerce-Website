@@ -270,8 +270,8 @@ export const api = {
 
   // --- COUPONS ---
   async getCoupons(): Promise<Coupon[]> {
-    const raw = getLocal<any[]>(STORAGE_KEYS.COUPONS, defaultCoupons);
-    return (raw || []).map((c) => ({
+    const raw = getLocal<Coupon[]>(STORAGE_KEYS.COUPONS, defaultCoupons);
+    return (raw || []).map((c: Coupon): Coupon => ({
       id: c.id,
       code: c.code,
       type: c.type || 'percentage',
@@ -359,6 +359,14 @@ export const api = {
     reviews.unshift(newRev);
     setLocal(STORAGE_KEYS.REVIEWS, reviews);
     return newRev;
+  },
+
+  async submitReview(review: Omit<Review, 'id' | 'created_at' | 'is_verified' | 'user_id'> & { is_verified?: boolean; user_id?: string }): Promise<Review> {
+    return this.addReview({
+      user_id: review.user_id || 'usr-guest',
+      is_verified: review.is_verified ?? true,
+      ...review,
+    });
   },
 
   // --- WISHLIST ---

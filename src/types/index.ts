@@ -166,10 +166,12 @@ export interface ShippingMethod {
   id: string;
   name: string;
   price: number;
-  estimated_delivery: string;
-  free_shipping_threshold: number | null;
-  is_active: boolean;
-  sort_order: number;
+  estimated_delivery?: string;
+  estimated_days?: string;
+  description?: string;
+  free_shipping_threshold?: number | null;
+  is_active?: boolean;
+  sort_order?: number;
 }
 
 export interface Address {
@@ -240,17 +242,25 @@ export interface Coupon {
   valid_from: string | null;
   valid_to: string | null;
   is_active: boolean;
+  min_order_value?: number;
+  max_uses?: number | null;
+  uses_count?: number;
+  expires_at?: string | null;
+  created_at?: string;
 }
 
 export interface Review {
   id: string;
   product_id: string;
-  user_id: string;
+  user_id?: string;
   user_name?: string;
+  reviewer_name?: string;
+  reviewer_email?: string;
   rating: number;
   title: string;
   body: string;
-  is_verified: boolean;
+  is_verified?: boolean;
+  is_approved?: boolean;
   created_at: string;
 }
 

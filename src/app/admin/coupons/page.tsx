@@ -163,13 +163,13 @@ export default function AdminCouponsPage() {
                     <td style={{ padding: '14px 20px', color: '#9A9490' }}>{c.type === 'percentage' ? 'Percentage' : 'Fixed'}</td>
                     <td style={{ padding: '14px 20px', color: '#E8E6E1', fontWeight: 600 }}>{c.type === 'percentage' ? `${c.value}%` : `₹${c.value}`}</td>
                     <td style={{ padding: '14px 20px', color: '#9A9490' }}>
-                      ₹{((c.min_order_amount ?? (c as any).min_order_value ?? 0)).toLocaleString('en-IN')}
+                      ₹{((c.min_order_amount ?? c.min_order_value ?? 0)).toLocaleString('en-IN')}
                     </td>
                     <td style={{ padding: '14px 20px', color: '#9A9490' }}>
-                      {c.times_used ?? (c as any).uses_count ?? 0} / {c.usage_limit ?? (c as any).max_uses ?? '∞'}
+                      {c.times_used ?? c.uses_count ?? 0} / {c.usage_limit ?? c.max_uses ?? '∞'}
                     </td>
                     <td style={{ padding: '14px 20px', color: '#9A9490' }}>
-                      {(c.valid_to || (c as any).expires_at) ? new Date(c.valid_to || (c as any).expires_at).toLocaleDateString('en-IN') : '—'}
+                      {(c.valid_to || c.expires_at) ? new Date(String(c.valid_to || c.expires_at)).toLocaleDateString('en-IN') : '—'}
                     </td>
                     <td style={{ padding: '14px 20px' }}>
                       <button onClick={() => handleToggle(c)} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
