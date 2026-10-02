@@ -11,6 +11,22 @@ export interface Profile {
   updated_at: string;
 }
 
+export interface BookingRequest {
+  id: string;
+  user_id: string;
+  user_name: string;
+  user_email: string;
+  user_phone: string;
+  service_type: string;
+  service_title: string;
+  preferred_date: string;
+  preferred_time: string;
+  guests_count: number;
+  special_requirements?: string;
+  status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
+  created_at: string;
+}
+
 export interface SiteSettings {
   id?: string;
   site_name: string;

@@ -78,9 +78,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   useEffect(() => {
     if (!isLoading && !isAdmin) {
-      router.replace('/login?redirect=' + encodeURIComponent(pathname));
+      if (user) {
+        router.replace('/account');
+      } else {
+        router.replace('/login?redirect=' + encodeURIComponent(pathname));
+      }
     }
-  }, [isLoading, isAdmin, pathname, router]);
+  }, [isLoading, isAdmin, user, pathname, router]);
 
   useEffect(() => {
     api.getOrders().then((orders) => {

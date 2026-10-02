@@ -15,15 +15,25 @@ import {
   LogIn,
   Gem,
   Sparkles,
+  Calendar,
 } from 'lucide-react';
 import Header from '@/components/storefront/Header';
 import Footer from '@/components/storefront/Footer';
 import { defaultSiteSettings } from '@/lib/seed-data';
 import { useAuth } from '@/context/AuthContext';
+import { api } from '@/lib/store';
+import { BookingRequest } from '@/types';
 
 export default function AccountPage() {
   const { user, logout, loginDemo, isAdmin } = useAuth();
-  const [activeTab, setActiveTab] = useState<'orders' | 'profile' | 'addresses'>('orders');
+  const [activeTab, setActiveTab] = useState<'orders' | 'bookings' | 'profile' | 'addresses'>('orders');
+  const [bookings, setBookings] = useState<BookingRequest[]>([]);
+
+  React.useEffect(() => {
+    if (user) {
+      api.getUserBookingRequests(user.id, user.email).then(setBookings);
+    }
+  }, [user]);
 
   return (
     <div className="min-h-screen flex flex-col bg-[#02030A] text-[#E8E3D8] selection:bg-[#FFD700]/30 selection:text-[#FFD700]">
@@ -202,6 +212,23 @@ export default function AccountPage() {
                   </button>
                   <button
                     type="button"
+                    onClick={() => setActiveTab('bookings')}
+                    className={`w-full flex items-center gap-3 p-3.5 text-left transition-colors cursor-pointer ${
+                      activeTab === 'bookings' ? 'bg-[#FFD700]/20 text-[#FFD700] border-l-2 border-[#FFD700]' : 'text-[#E8E3D8]/70 hover:text-white'
+                    }`}
+                  >
+                    <Calendar className="w-4 h-4" />
+                    <div className="flex-1 flex items-center justify-between">
+                      <span>Atelier Bookings</span>
+                      {bookings.length > 0 && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-[rgba(201,169,110,0.2)] text-[#FFD700]">
+                          {bookings.length}
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => setActiveTab('profile')}
                     className={`w-full flex items-center gap-3 p-3.5 text-left transition-colors cursor-pointer ${
                       activeTab === 'profile' ? 'bg-[#FFD700]/20 text-[#FFD700] border-l-2 border-[#FFD700]' : 'text-[#E8E3D8]/70 hover:text-white'
@@ -266,6 +293,107 @@ export default function AccountPage() {
                         <ArrowRight className="w-3.5 h-3.5 ml-1" />
                       </Link>
                     </div>
+                  </div>
+                )}
+
+                {activeTab === 'bookings' && (
+                  <div className="space-y-6">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-yellow-500/15">
+                      <div>
+                        <h2 className="font-serif text-2xl text-white font-medium">
+                          Atelier Appointments & Commissions
+                        </h2>
+                        <p className="text-xs text-[#E8E3D8]/60 mt-1">
+                          Private gem consultations, bespoke handlooms, and sacred artisan commissions.
+                        </p>
+                      </div>
+                      <Link
+                        href="/booking"
+                        className="btn-neon-gold text-xs py-2 px-4 inline-flex items-center gap-2 self-start sm:self-auto"
+                      >
+                        <Sparkles className="w-3.5 h-3.5" />
+                        <span>Place New Booking</span>
+                      </Link>
+                    </div>
+
+                    {bookings.length === 0 ? (
+                      <div
+                        className="p-8 text-center space-y-4"
+                        style={{
+                          background: 'rgba(4, 6, 16, 0.7)',
+                          border: '1px solid rgba(255, 215, 0, 0.15)',
+                        }}
+                      >
+                        <Calendar className="w-8 h-8 text-[#FFD700]/50 mx-auto" />
+                        <h3 className="font-serif text-lg text-white">No Booking Requests Placed</h3>
+                        <p className="text-xs text-[#E8E3D8]/60 max-w-sm mx-auto font-sans leading-relaxed">
+                          Reserve a private salon consultation with our certified gemologists or commission a custom Kandyan silk handloom with master artisans.
+                        </p>
+                        <Link
+                          href="/booking"
+                          className="btn-neon-gold text-xs inline-flex py-2.5 px-6"
+                        >
+                          <span>Reserve Private Experience</span>
+                          <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                        </Link>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 gap-4">
+                        {bookings.map((bk) => (
+                          <div
+                            key={bk.id}
+                            className="p-5 rounded-xl border border-yellow-500/20 space-y-3"
+                            style={{
+                              background: 'rgba(8, 12, 28, 0.85)',
+                            }}
+                          >
+                            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/5 pb-3">
+                              <div>
+                                <span className="text-[10px] font-mono uppercase tracking-widest text-[#FFD700]">
+                                  {bk.id.toUpperCase()}
+                                </span>
+                                <h3 className="font-serif text-base text-white font-medium mt-0.5">
+                                  {bk.service_title}
+                                </h3>
+                              </div>
+                              <span
+                                className={`text-[10px] uppercase font-bold px-2.5 py-1 rounded-full ${
+                                  bk.status === 'confirmed'
+                                    ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                                    : bk.status === 'cancelled'
+                                    ? 'bg-red-500/15 text-red-400 border border-red-500/30'
+                                    : 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
+                                }`}
+                              >
+                                {bk.status === 'confirmed' ? 'Confirmed & Reserved' : bk.status}
+                              </span>
+                            </div>
+
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs text-[#E8E3D8]/70">
+                              <div>
+                                <span className="text-[10px] uppercase tracking-wider text-white/40 block">Date</span>
+                                <span className="text-[#FFD700] font-semibold">{bk.preferred_date}</span>
+                              </div>
+                              <div>
+                                <span className="text-[10px] uppercase tracking-wider text-white/40 block">Time Slot</span>
+                                <span className="text-white">{bk.preferred_time}</span>
+                              </div>
+                              <div>
+                                <span className="text-[10px] uppercase tracking-wider text-white/40 block">Party</span>
+                                <span className="text-white">{bk.guests_count} Patrons</span>
+                              </div>
+                            </div>
+
+                            {bk.special_requirements && (
+                              <div className="pt-2 text-xs text-[#E8E3D8]/60 bg-black/30 p-2.5 rounded border border-white/5">
+                                <span className="font-semibold text-white/80">Special Brief: </span>
+                                {bk.special_requirements}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
 

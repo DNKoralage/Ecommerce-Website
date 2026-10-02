@@ -21,6 +21,7 @@ import {
   NavLink,
   FooterColumn,
   SocialLink,
+  BookingRequest,
 } from '@/types';
 
 // Browser persistent store keys
@@ -34,6 +35,7 @@ const STORAGE_KEYS = {
   HERO: 'luxe_hero_slides',
   CATEGORIES: 'luxe_categories',
   CUSTOMIZATION: 'luxe_site_customization',
+  BOOKINGS: 'luxe_booking_requests',
 };
 
 const getLocal = <T>(key: string, fallback: T): T => {
@@ -391,6 +393,56 @@ export const api = {
   // --- CONTACT ---
   async submitContact(_data: { name: string; email: string; message: string }): Promise<{ success: boolean }> {
     return { success: true };
+  },
+
+  // --- BOOKING REQUESTS (CUSTOM ATELIER COMMISSIONS) ---
+  async getBookingRequests(): Promise<BookingRequest[]> {
+    return getLocal<BookingRequest[]>(STORAGE_KEYS.BOOKINGS, [
+      {
+        id: 'bk-demo-1',
+        user_id: 'usr-cust-1',
+        user_name: 'Ceylon Patron',
+        user_email: 'patron@ceylontimes.lk',
+        user_phone: '+94 77 123 4567',
+        service_type: 'sapphire_consultation',
+        service_title: 'Royal Ceylon Sapphire & Gem Consultation',
+        preferred_date: '2026-10-15',
+        preferred_time: '14:00 - 15:30',
+        guests_count: 2,
+        special_requirements: 'Looking for a certified unheated royal blue sapphire for bespoke pendant setting.',
+        status: 'confirmed',
+        created_at: '2026-10-01T10:30:00.000Z',
+      },
+    ]);
+  },
+
+  async getUserBookingRequests(userId: string, email?: string): Promise<BookingRequest[]> {
+    const all = await this.getBookingRequests();
+    return all.filter((b) => b.user_id === userId || (email && b.user_email.toLowerCase() === email.toLowerCase()));
+  },
+
+  async createBookingRequest(data: Omit<BookingRequest, 'id' | 'created_at' | 'status'>): Promise<BookingRequest> {
+    const all = await this.getBookingRequests();
+    const newBooking: BookingRequest = {
+      ...data,
+      id: `bk-${Date.now()}`,
+      status: 'pending',
+      created_at: new Date().toISOString(),
+    };
+    const updated = [newBooking, ...all];
+    setLocal(STORAGE_KEYS.BOOKINGS, updated);
+    return newBooking;
+  },
+
+  async updateBookingRequestStatus(id: string, status: BookingRequest['status']): Promise<BookingRequest | null> {
+    const all = await this.getBookingRequests();
+    const index = all.findIndex((b) => b.id === id);
+    if (index !== -1) {
+      all[index].status = status;
+      setLocal(STORAGE_KEYS.BOOKINGS, all);
+      return all[index];
+    }
+    return null;
   },
 
   // --- SITE CUSTOMIZATION ---

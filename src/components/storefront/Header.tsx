@@ -15,6 +15,7 @@ import {
   Globe,
   Sun,
   Moon,
+  Calendar,
 } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
@@ -346,7 +347,24 @@ export default function Header({
 
             {/* Right Action Icons */}
             <div className="flex items-center gap-2.5 sm:gap-4">
-              {/* Admin Portal Link */}
+              {/* Atelier Booking Link */}
+              <Link
+                href="/booking"
+                onClick={() => sound.playClick()}
+                className="hidden lg:inline-flex items-center gap-1.5 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] transition-all duration-300"
+                style={{
+                  background: isLight ? '#FFFFFF' : 'rgba(255,255,255,0.04)',
+                  border: isLight ? '1px solid rgba(212, 175, 55, 0.4)' : '1px solid rgba(255,255,255,0.12)',
+                  color: isLight ? '#0F172A' : '#E8E6E1',
+                  fontFamily: 'var(--font-rajdhani)',
+                }}
+                title="Reserve Private Atelier Appointment"
+              >
+                <Calendar className="w-3.5 h-3.5 text-[#C9A96E]" />
+                <span>Book Atelier</span>
+              </Link>
+
+              {/* Admin Portal Link - Strictly for authenticated Admins only */}
               {isAdmin && (
                 <Link
                   href="/admin"
@@ -545,6 +563,21 @@ export default function Header({
                       </Link>
                     </motion.div>
                   ))}
+                  <Link
+                    href="/booking"
+                    onClick={() => {
+                      sound.playClick();
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className="mt-3 inline-flex items-center gap-2 text-xs uppercase tracking-widest pt-3 font-bold border-t"
+                    style={{
+                      borderColor: isLight ? '#E2E8F0' : 'rgba(255,255,255,0.1)',
+                      color: isLight ? '#0F172A' : '#E8E6E1',
+                    }}
+                  >
+                    <Calendar className="w-4 h-4 text-[#C9A96E]" />
+                    <span>Reserve Atelier Booking</span>
+                  </Link>
                   {isAdmin && (
                     <Link
                       href="/admin"
@@ -552,9 +585,8 @@ export default function Header({
                         sound.playClick();
                         setIsMobileMenuOpen(false);
                       }}
-                      className="mt-4 inline-flex items-center gap-2 text-xs uppercase tracking-widest pt-4 font-bold border-t"
+                      className="mt-2 inline-flex items-center gap-2 text-xs uppercase tracking-widest pt-2 font-bold"
                       style={{
-                        borderColor: isLight ? '#E2E8F0' : 'rgba(255,215,0,0.2)',
                         color: isLight ? '#996515' : '#FFD700',
                       }}
                     >

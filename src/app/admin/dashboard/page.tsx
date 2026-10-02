@@ -15,9 +15,10 @@ import {
   AlertCircle,
   Star,
   Eye,
+  Calendar,
 } from 'lucide-react';
 import { api } from '@/lib/store';
-import { Order, Product } from '@/types';
+import { Order, Product, BookingRequest } from '@/types';
 
 interface StatCard {
   label: string;
@@ -103,15 +104,24 @@ function StatusBadge({ status }: { status: string }) {
 export default function AdminDashboard() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [bookings, setBookings] = useState<BookingRequest[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([api.getOrders(), api.getProducts()]).then(([o, p]) => {
+    Promise.all([api.getOrders(), api.getProducts(), api.getBookingRequests()]).then(([o, p, b]) => {
       setOrders(o);
       setProducts(p);
+      setBookings(b);
       setLoading(false);
     });
   }, []);
+
+  const handleUpdateBookingStatus = async (id: string, status: BookingRequest['status']) => {
+    const updated = await api.updateBookingRequestStatus(id, status);
+    if (updated) {
+      setBookings((prev) => prev.map((b) => (b.id === id ? updated : b)));
+    }
+  };
 
   const totalRevenue = orders.filter(o => o.payment_status === 'paid').reduce((s, o) => s + o.total, 0);
   const totalOrders = orders.length;
@@ -271,6 +281,129 @@ export default function AdminDashboard() {
             ))}
           </div>
         </div>
+      </div>
+
+      {/* Customer Booking Requests Section */}
+      <div style={{
+        marginTop: 28,
+        background: 'linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.02) 100%)',
+        border: '1px solid rgba(255,255,255,0.07)',
+        borderRadius: 16, padding: 24,
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Calendar size={18} color="#C9A96E" />
+              <h2 style={{ fontSize: 16, fontWeight: 700, color: '#E8E6E1', margin: 0 }}>
+                Patron Atelier Booking Requests
+              </h2>
+            </div>
+            <p style={{ color: '#6B6760', fontSize: 12, margin: '4px 0 0' }}>
+              Custom gemstone consultations, bespoke handlooms, and private salon appointments placed by patrons.
+            </p>
+          </div>
+          <span style={{
+            fontSize: 11, fontWeight: 700, padding: '3px 10px',
+            background: 'rgba(201,169,110,0.15)', color: '#C9A96E',
+            borderRadius: 20, border: '1px solid rgba(201,169,110,0.3)',
+          }}>
+            {bookings.length} Total Bookings
+          </span>
+        </div>
+
+        {bookings.length === 0 ? (
+          <div style={{ padding: '32px 0', textAlign: 'center', color: '#6B6760', fontSize: 13 }}>
+            No booking requests placed yet.
+          </div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                  {['Ref ID', 'Patron Details', 'Service Experience', 'Date & Time', 'Party', 'Status', 'Actions'].map((h) => (
+                    <th key={h} style={{
+                      padding: '12px 16px', textAlign: 'left', color: '#6B6760',
+                      fontWeight: 600, fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase',
+                    }}>
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {bookings.map((bk) => (
+                  <tr
+                    key={bk.id}
+                    style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', transition: 'background 0.15s' }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.02)'; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+                  >
+                    <td style={{ padding: '14px 16px', fontFamily: 'monospace', fontWeight: 700, fontSize: 12, color: '#C9A96E' }}>
+                      {bk.id.toUpperCase()}
+                    </td>
+                    <td style={{ padding: '14px 16px' }}>
+                      <div style={{ fontWeight: 600, color: '#E8E6E1' }}>{bk.user_name}</div>
+                      <div style={{ fontSize: 11, color: '#6B6760' }}>{bk.user_email}</div>
+                    </td>
+                    <td style={{ padding: '14px 16px', color: '#E8E6E1' }}>
+                      <div style={{ fontWeight: 500 }}>{bk.service_title}</div>
+                      {bk.special_requirements && (
+                        <div style={{ fontSize: 11, color: '#9A9490', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          &quot;{bk.special_requirements}&quot;
+                        </div>
+                      )}
+                    </td>
+                    <td style={{ padding: '14px 16px', color: '#9A9490' }}>
+                      <div style={{ color: '#E8E6E1', fontWeight: 600 }}>{bk.preferred_date}</div>
+                      <div style={{ fontSize: 11 }}>{bk.preferred_time}</div>
+                    </td>
+                    <td style={{ padding: '14px 16px', color: '#9A9490' }}>
+                      {bk.guests_count} Patrons
+                    </td>
+                    <td style={{ padding: '14px 16px' }}>
+                      <span style={{
+                        display: 'inline-flex', padding: '3px 8px', borderRadius: 12, fontSize: 10, fontWeight: 700, textTransform: 'uppercase',
+                        background: bk.status === 'confirmed' ? 'rgba(74,222,128,0.15)' : bk.status === 'cancelled' ? 'rgba(248,113,113,0.15)' : 'rgba(251,191,36,0.15)',
+                        color: bk.status === 'confirmed' ? '#4ADE80' : bk.status === 'cancelled' ? '#F87171' : '#FCD34D',
+                        border: `1px solid ${bk.status === 'confirmed' ? 'rgba(74,222,128,0.3)' : bk.status === 'cancelled' ? 'rgba(248,113,113,0.3)' : 'rgba(251,191,36,0.3)'}`,
+                      }}>
+                        {bk.status}
+                      </span>
+                    </td>
+                    <td style={{ padding: '14px 16px' }}>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        {bk.status !== 'confirmed' && (
+                          <button
+                            onClick={() => handleUpdateBookingStatus(bk.id, 'confirmed')}
+                            style={{
+                              padding: '4px 8px', borderRadius: 6, fontSize: 11, fontWeight: 600,
+                              background: 'rgba(74,222,128,0.15)', border: '1px solid rgba(74,222,128,0.3)',
+                              color: '#4ADE80', cursor: 'pointer',
+                            }}
+                          >
+                            Confirm
+                          </button>
+                        )}
+                        {bk.status !== 'cancelled' && (
+                          <button
+                            onClick={() => handleUpdateBookingStatus(bk.id, 'cancelled')}
+                            style={{
+                              padding: '4px 8px', borderRadius: 6, fontSize: 11, fontWeight: 600,
+                              background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.25)',
+                              color: '#F87171', cursor: 'pointer',
+                            }}
+                          >
+                            Cancel
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Pending orders alert */}
