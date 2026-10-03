@@ -23,6 +23,7 @@ import {
   SocialLink,
   BookingRequest,
 } from '@/types';
+import { triggerOrderNotifications } from './notifications';
 
 // Browser persistent store keys
 const STORAGE_KEYS = {
@@ -301,7 +302,7 @@ export const api = {
     if (subtotal < minAmount) {
       return {
         valid: false,
-        message: `Requires minimum order of ₹${minAmount.toLocaleString()}`,
+        message: `Requires minimum order of Rs. ${minAmount.toLocaleString('en-LK')}`,
       };
     }
     return { valid: true, coupon: found };
@@ -309,6 +310,14 @@ export const api = {
 
   // --- ORDERS ---
   async getOrders(): Promise<Order[]> {
+    if (isSupabaseConfigured() && supabase) {
+      try {
+        const { data, error } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
+        if (!error && data && data.length > 0) return data as Order[];
+      } catch (e) {
+        console.warn('Supabase getOrders error:', e);
+      }
+    }
     return getLocal<Order[]>(STORAGE_KEYS.ORDERS, []);
   },
 
@@ -326,8 +335,33 @@ export const api = {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
+
+    if (isSupabaseConfigured() && supabase) {
+      try {
+        await supabase.from('orders').insert([newOrder]);
+      } catch (e) {
+        console.warn('Supabase createOrder sync error:', e);
+      }
+    }
+
     orders.unshift(newOrder);
     setLocal(STORAGE_KEYS.ORDERS, orders);
+
+    // Notify any admin dashboard listeners that orders have changed
+    if (typeof window !== 'undefined') {
+      try {
+        window.dispatchEvent(
+          new StorageEvent('storage', {
+            key: STORAGE_KEYS.ORDERS,
+            newValue: JSON.stringify(orders),
+            storageArea: localStorage,
+          })
+        );
+        // Also dispatch a custom event for same-tab listeners
+        window.dispatchEvent(new CustomEvent('orders_updated', { detail: newOrder }));
+      } catch {}
+    }
+
     return newOrder;
   },
 
@@ -397,6 +431,14 @@ export const api = {
 
   // --- BOOKING REQUESTS (CUSTOM ATELIER COMMISSIONS) ---
   async getBookingRequests(): Promise<BookingRequest[]> {
+    if (isSupabaseConfigured() && supabase) {
+      try {
+        const { data, error } = await supabase.from('booking_requests').select('*').order('created_at', { ascending: false });
+        if (!error && data && data.length > 0) return data as BookingRequest[];
+      } catch (e) {
+        console.warn('Supabase getBookingRequests error:', e);
+      }
+    }
     return getLocal<BookingRequest[]>(STORAGE_KEYS.BOOKINGS, [
       {
         id: 'bk-demo-1',
@@ -429,8 +471,51 @@ export const api = {
       status: 'pending',
       created_at: new Date().toISOString(),
     };
+
+    if (isSupabaseConfigured() && supabase) {
+      try {
+        await supabase.from('booking_requests').insert([newBooking]);
+      } catch (e) {
+        console.warn('Supabase booking sync error:', e);
+      }
+    }
+
     const updated = [newBooking, ...all];
     setLocal(STORAGE_KEYS.BOOKINGS, updated);
+
+    // Notify any dashboard or admin listeners in real-time
+    if (typeof window !== 'undefined') {
+      try {
+        window.dispatchEvent(
+          new StorageEvent('storage', {
+            key: STORAGE_KEYS.BOOKINGS,
+            newValue: JSON.stringify(updated),
+            storageArea: localStorage,
+          })
+        );
+        window.dispatchEvent(new CustomEvent('bookings_updated', { detail: newBooking }));
+      } catch {}
+    }
+
+    // Trigger automated email & WhatsApp alerts directly to primary administrator
+    try {
+      triggerOrderNotifications({
+        bookingId: newBooking.id,
+        orderNumber: newBooking.order_id,
+        customerName: newBooking.user_name,
+        customerEmail: newBooking.user_email,
+        customerPhone: newBooking.user_phone,
+        serviceTitle: newBooking.service_title,
+        preferredDate: newBooking.preferred_date,
+        preferredTime: newBooking.preferred_time,
+        partySize: newBooking.guests_count,
+        specialRequirements: newBooking.special_requirements,
+        totalAmount: newBooking.total_amount,
+        itemsSummary: newBooking.items_summary,
+        timestamp: newBooking.created_at,
+      }).catch((err) => console.error('Notification dispatch error:', err));
+    } catch {}
+
     return newBooking;
   },
 

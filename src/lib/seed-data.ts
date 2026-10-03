@@ -3,8 +3,8 @@ import { Product, Category, HeroSlide, ShippingMethod, SiteSettings, Coupon, Rev
 export const defaultSiteSettings: SiteSettings = {
   site_name: 'Ceylon Times',
   tagline: 'Authentic Sri Lankan Craftsmanship & Living Heritage',
-  logo_url: '/logo-white.png',
-  logo_inverted_url: '/logo-black.png',
+  logo_url: '/logo-black.png',
+  logo_inverted_url: '/logo-white.png',
   favicon_url: '/favicon.png',
   contact_email: 'concierge@ceylontimes.lk',
   contact_phone: '+94 11 255 0199',

@@ -27,6 +27,9 @@ CREATE TABLE profiles (
   phone TEXT,
   avatar_url TEXT,
   role user_role DEFAULT 'customer' NOT NULL,
+  is_verified BOOLEAN DEFAULT FALSE,
+  phone_verified BOOLEAN DEFAULT FALSE,
+  is_primary_admin BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
   updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
 );
@@ -34,16 +37,16 @@ CREATE TABLE profiles (
 -- Site Settings (singleton)
 CREATE TABLE site_settings (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  site_name TEXT DEFAULT 'LUXE STORE' NOT NULL,
-  tagline TEXT DEFAULT 'Premium E-Commerce Experience',
+  site_name TEXT DEFAULT 'Ceylon Times' NOT NULL,
+  tagline TEXT DEFAULT 'Sovereign Sri Lankan Heritage Atelier',
   logo_url TEXT,
   logo_inverted_url TEXT,
   favicon_url TEXT,
-  contact_email TEXT,
-  contact_phone TEXT,
-  business_address TEXT,
-  currency_code TEXT DEFAULT 'INR' NOT NULL,
-  currency_symbol TEXT DEFAULT '₹' NOT NULL,
+  contact_email TEXT DEFAULT 'admin@ceylontimes.lk',
+  contact_phone TEXT DEFAULT '+94 11 234 5678',
+  business_address TEXT DEFAULT 'Colombo 03, Sri Lanka',
+  currency_code TEXT DEFAULT 'LKR' NOT NULL,
+  currency_symbol TEXT DEFAULT 'Rs.' NOT NULL,
   tax_rate NUMERIC(5,2) DEFAULT 18.00,
   tax_inclusive BOOLEAN DEFAULT FALSE,
   announcement_bar_active BOOLEAN DEFAULT FALSE,
@@ -280,6 +283,29 @@ CREATE TABLE coupons (
 );
 
 CREATE INDEX idx_coupons_code ON coupons(code);
+
+-- Booking Requests (Atelier Bespoke & Archival Reservations)
+CREATE TABLE booking_requests (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  user_name TEXT NOT NULL,
+  user_email TEXT NOT NULL,
+  user_phone TEXT NOT NULL,
+  service_type TEXT NOT NULL,
+  service_title TEXT NOT NULL,
+  preferred_date TEXT NOT NULL,
+  preferred_time TEXT NOT NULL,
+  guests_count INT DEFAULT 1,
+  special_requirements TEXT,
+  order_id TEXT,
+  items_summary TEXT,
+  total_amount NUMERIC(12,2),
+  status TEXT DEFAULT 'pending' NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+);
+
+CREATE INDEX idx_booking_requests_user ON booking_requests(user_id);
+CREATE INDEX idx_booking_requests_status ON booking_requests(status);
 
 -- Newsletter Subscribers
 CREATE TABLE subscribers (
@@ -811,18 +837,17 @@ CREATE POLICY "Users delete own avatars" ON storage.objects
 
 -- Insert default site settings
 INSERT INTO site_settings (site_name, tagline, currency_code, currency_symbol, tax_rate, tax_inclusive)
-VALUES ('LUXE STORE', 'Curated Premium Collections', 'INR', '₹', 18.00, FALSE);
+VALUES ('Ceylon Times', 'Sovereign Sri Lankan Heritage Atelier', 'LKR', 'Rs.', 18.00, FALSE);
 
 -- Insert default SEO settings
 INSERT INTO seo_settings (meta_title_template, default_meta_description)
-VALUES ('{Page Title} | LUXE STORE', 'Discover curated premium products at LUXE STORE. Shop the latest collections with free shipping on orders above ₹999.');
+VALUES ('{Page Title} | Ceylon Times', 'Discover certified Ratnapura sapphires, Kandyan handlooms, and sacred Sri Lankan heritage collections at Ceylon Times. Complimentary delivery on orders above Rs. 7,500.');
 
 -- Insert default shipping methods
 INSERT INTO shipping_methods (name, price, estimated_delivery, free_shipping_threshold, is_active, sort_order)
 VALUES
-  ('Standard Shipping', 99.00, '5-7 business days', 999.00, TRUE, 1),
-  ('Express Shipping', 199.00, '2-3 business days', 2499.00, TRUE, 2),
-  ('Overnight Shipping', 499.00, '1 business day', NULL, TRUE, 3);
+  ('Island Standard Registered Courier', 350.00, '3-5 business days', 7500.00, TRUE, 1),
+  ('Priority Island Courier Express', 750.00, '24-48 hours', NULL, TRUE, 2);
 
 -- Insert sample hero slides
 INSERT INTO hero_slides (image_url, heading, subheading, cta_text, cta_link, sort_order, is_active)

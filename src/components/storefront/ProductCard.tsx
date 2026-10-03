@@ -3,13 +3,14 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Heart, Star, ShoppingBag, Eye, Sparkles } from 'lucide-react';
+import { Heart, Star, ShoppingCart, Eye, Package, Zap } from 'lucide-react';
 import { Product } from '@/types';
 import { useCart } from '@/context/CartContext';
 import { useToast } from '@/context/ToastContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { useTheme } from '@/context/ThemeContext';
-import { formatPrice, calculateDiscountPercentage } from '@/lib/utils';
+import { useCurrency } from '@/context/CurrencyContext';
+import { calculateDiscountPercentage } from '@/lib/utils';
 import { api } from '@/lib/store';
 import { sound } from '@/lib/sound';
 
@@ -23,55 +24,41 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onQuickView }
   const { success } = useToast();
   const { language, t } = useLanguage();
   const { theme } = useTheme();
+  const { formatPrice } = useCurrency();
   const [isHovered, setIsHovered] = useState(false);
   const [isWishlisted, setIsWishlisted] = useState(false);
+  const [isAdding, setIsAdding] = useState(false);
 
-  // 3D Perspective Tilt State
-  const [rotateX, setRotateX] = useState(0);
-  const [rotateY, setRotateY] = useState(0);
-  const [glarePos, setGlarePos] = useState({ x: 50, y: 50 });
+  const isLight = theme === 'light';
 
-  const primaryImage = product.images?.[0]?.image_url || 'https://images.unsplash.com/photo-1524805444758-089113d48a6d?auto=format&fit=crop&w=800&q=80';
+  const primaryImage   = product.images?.[0]?.image_url || 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=800&q=80';
   const secondaryImage = product.images?.[1]?.image_url || primaryImage;
 
-  const isSale = product.sale_price !== null && product.sale_price < product.price;
-  const discountPct = isSale ? calculateDiscountPercentage(product.price, product.sale_price!) : 0;
-  const isNew = product.tags?.includes('new-arrival');
+  const isSale       = product.sale_price !== null && product.sale_price < product.price;
+  const discountPct  = isSale ? calculateDiscountPercentage(product.price, product.sale_price!) : 0;
+  const isNew        = product.tags?.includes('new-arrival');
+  const stockQty     = product.stock_quantity ?? 0;
+  const isLowStock   = stockQty > 0 && stockQty <= 10;
+  const isOutOfStock = stockQty === 0;
 
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    const centerX = rect.width / 2;
-    const centerY = rect.height / 2;
-    // Natural subtle 3D tilt: max 6 degrees
-    const rX = -((y - centerY) / centerY) * 6;
-    const rY = ((x - centerX) / centerX) * 6;
-    setRotateX(rX);
-    setRotateY(rY);
-    setGlarePos({ x: (x / rect.width) * 100, y: (y / rect.height) * 100 });
-  };
+  const rating      = product.rating ?? 4.5;
+  const reviewCount = product.review_count ?? 0;
 
-  const handleMouseEnter = () => {
-    setIsHovered(true);
-    sound.playChime();
-  };
+  /* colour tokens */
+  const bg      = isLight ? '#FFFFFF' : '#1E293B';
+  const border  = isLight ? '#E2E8F0' : 'rgba(51,65,85,0.7)';
+  const txtMain = isLight ? '#0F172A' : '#F1F5F9';
+  const txtMute = isLight ? '#64748B' : '#94A3B8';
 
-  const handleMouseLeave = () => {
-    setIsHovered(false);
-    setRotateX(0);
-    setRotateY(0);
-  };
-
-  const handleQuickAdd = (e: React.MouseEvent) => {
+  const handleQuickAdd = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    if (isOutOfStock) return;
     sound.playSuccess();
+    setIsAdding(true);
     addItem(product, 1, {}, e);
-    const msg = language === 'si'
-      ? `"${product.title}" මල්ලට එක් කරන ලදී`
-      : `Added "${product.title}" to bag`;
-    success(msg);
+    success(`"${product.title}" added to cart`);
+    setTimeout(() => setIsAdding(false), 1000);
   };
 
   const handleWishlistToggle = (e: React.MouseEvent) => {
@@ -93,116 +80,54 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onQuickView }
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: '-40px' }}
-      transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-      onMouseMove={handleMouseMove}
-      className="group relative flex flex-col will-change-transform product-card-root"
-      style={{
-        background:
-          theme === 'light'
-            ? 'linear-gradient(170deg, #FFFFFF 0%, #FAF8F2 100%)'
-            : 'linear-gradient(170deg, rgba(14, 20, 38, 0.94) 0%, rgba(8, 12, 24, 0.98) 100%)',
-        border:
-          theme === 'light'
-            ? isHovered
-              ? '1px solid rgba(184, 134, 11, 0.85)'
-              : '1px solid rgba(212, 175, 55, 0.4)'
-            : isHovered
-            ? '1px solid rgba(255, 215, 0, 0.5)'
-            : '1px solid rgba(255, 215, 0, 0.2)',
-        boxShadow:
-          theme === 'light'
-            ? isHovered
-              ? '0 20px 40px rgba(0, 0, 0, 0.12), 0 0 25px rgba(212, 175, 55, 0.35)'
-              : '0 8px 24px rgba(0, 0, 0, 0.08)'
-            : isHovered
-            ? '0 20px 40px rgba(0, 0, 0, 0.85), 0 0 30px rgba(255, 215, 0, 0.22), 0 0 10px rgba(0, 255, 255, 0.15)'
-            : '0 6px 24px rgba(0, 0, 0, 0.6)',
-        backdropFilter: 'blur(20px)',
-        WebkitBackdropFilter: 'blur(20px)',
-        clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px))',
-        transform: isHovered
-          ? `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateY(-6px)`
-          : 'perspective(1000px) rotateX(0deg) rotateY(0deg) translateY(0px)',
-        transition: isHovered ? 'transform 0.1s ease-out, box-shadow 0.3s ease, border-color 0.3s ease' : 'transform 0.4s ease-out, box-shadow 0.4s ease, border-color 0.4s ease',
-      }}
+      viewport={{ once: true, margin: '-30px' }}
+      transition={{ duration: 0.45, ease: [0.25, 0.1, 0.25, 1] }}
+      onMouseEnter={() => { setIsHovered(true); sound.playChime(); }}
+      onMouseLeave={() => setIsHovered(false)}
+      className="group relative flex flex-col product-card-modern cursor-pointer"
     >
-      {/* Dynamic 3D Specular Glare / Sheen Overlay */}
-      {isHovered && (
-        <div
-          className="absolute inset-0 pointer-events-none z-30 transition-opacity duration-300"
-          style={{
-            background: `radial-gradient(circle 280px at ${glarePos.x}% ${glarePos.y}%, rgba(255, 255, 255, 0.16) 0%, rgba(0, 255, 255, 0.04) 40%, transparent 80%)`,
-          }}
-        />
-      )}
-
-      {/* Cyber-Heritage Corner Accents */}
-      <div className="absolute top-1.5 left-1.5 w-2.5 h-2.5 border-t border-l border-[#FFD700]/70 pointer-events-none z-20" />
-      <div className="absolute bottom-1.5 right-1.5 w-2.5 h-2.5 border-b border-r border-[#00FFFF]/70 pointer-events-none z-20" />
-
-      {/* Product Image Container */}
-      <div className="relative aspect-[3/4] w-full overflow-hidden bg-[#070B16]">
-        <Link
-          href={`/products/${product.slug}`}
-          onClick={() => sound.playClick()}
-          className="block w-full h-full"
-        >
-          {/* Primary Product Photo */}
-          <motion.img
+      {/* Product Image */}
+      <div className="relative overflow-hidden" style={{ borderRadius: '20px 20px 0 0', aspectRatio: '1/1', background: isLight ? '#F8FAFC' : '#162032' }}>
+        <Link href={`/products/${product.slug}`} onClick={() => sound.playClick()} className="block w-full h-full">
+          {/* Primary Image */}
+          <img
             src={primaryImage}
             alt={product.title}
-            className="w-full h-full object-cover object-center absolute inset-0"
-            animate={{
-              scale: isHovered ? 1.07 : 1,
-              opacity: isHovered && secondaryImage !== primaryImage ? 0 : 1,
+            className="w-full h-full object-cover object-center absolute inset-0 transition-all duration-500"
+            style={{
+              transform: isHovered ? 'scale(1.06)' : 'scale(1)',
+              opacity: (isHovered && secondaryImage !== primaryImage) ? 0 : 1,
             }}
-            transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
           />
 
-          {/* Secondary Lifestyle Photo */}
+          {/* Secondary Image */}
           {secondaryImage !== primaryImage && (
-            <motion.img
+            <img
               src={secondaryImage}
-              alt={`${product.title} alternative view`}
-              className="w-full h-full object-cover object-center absolute inset-0"
-              animate={{
-                scale: isHovered ? 1.07 : 1,
+              alt={`${product.title} view 2`}
+              className="w-full h-full object-cover object-center absolute inset-0 transition-all duration-500"
+              style={{
+                transform: isHovered ? 'scale(1.06)' : 'scale(1)',
                 opacity: isHovered ? 1 : 0,
               }}
-              transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
             />
           )}
-
-          {/* Luminous Contrast Vignette */}
-          <div className="absolute inset-0 bg-gradient-to-t from-[#080C1A] via-transparent to-black/25 opacity-75 group-hover:opacity-40 transition-opacity pointer-events-none" />
         </Link>
 
-        {/* Status Badges */}
+        {/* Top Badges */}
         <div className="absolute top-3 left-3 flex flex-col gap-1.5 pointer-events-none z-10">
           {isNew && (
             <span
-              className="px-2.5 py-0.5 text-[9px] font-bold tracking-[0.16em] uppercase text-[#060A16] flex items-center gap-1"
-              style={{
-                background: 'linear-gradient(135deg, #00FFFF, #00B4D8)',
-                boxShadow: '0 0 12px rgba(0,255,255,0.7)',
-                fontFamily: 'var(--font-rajdhani)',
-              }}
+              className="px-2.5 py-0.5 text-[10px] font-bold rounded-full text-white"
+              style={{ background: '#2563EB' }}
             >
-              <Sparkles className="w-2.5 h-2.5 text-[#060A16]" />
-              <span>{t('ceylonNew')}</span>
+              NEW
             </span>
           )}
           {isSale && (
             <span
-              className="px-2.5 py-0.5 text-[9px] font-bold tracking-[0.16em] uppercase text-white"
-              style={{
-                background: 'linear-gradient(135deg, #FF2D55, #E60039)',
-                boxShadow: '0 0 12px rgba(255,45,85,0.7)',
-                fontFamily: 'var(--font-rajdhani)',
-              }}
+              className="px-2.5 py-0.5 text-[10px] font-bold rounded-full text-white"
+              style={{ background: '#EF4444' }}
             >
               -{discountPct}%
             </span>
@@ -214,146 +139,164 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onQuickView }
           whileTap={{ scale: 0.82 }}
           onClick={handleWishlistToggle}
           aria-label="Wishlist"
-          className="absolute top-3 right-3 p-2 rounded-sm backdrop-blur-md transition-all z-20 cursor-pointer"
+          className="absolute top-3 right-3 w-9 h-9 rounded-full flex items-center justify-center transition-all z-20"
           style={{
-            background: 'rgba(6,10,22,0.85)',
-            border: '1px solid rgba(255,215,0,0.35)',
-            boxShadow: '0 2px 10px rgba(0,0,0,0.6)',
+            background: isWishlisted ? '#FFF1F2' : (isLight ? 'rgba(255,255,255,0.95)' : 'rgba(30,41,59,0.9)'),
+            border: `1px solid ${isWishlisted ? '#FECDD3' : border}`,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
           }}
         >
           <Heart
-            className={`w-3.5 h-3.5 transition-colors ${
-              isWishlisted ? 'fill-[#FF2D55] text-[#FF2D55]' : 'text-[#E8E3D8]/80 hover:text-[#FFD700]'
-            }`}
+            className="w-4 h-4 transition-colors"
+            style={{
+              color: isWishlisted ? '#EF4444' : txtMute,
+              fill: isWishlisted ? '#EF4444' : 'none',
+            }}
           />
         </motion.button>
 
-        {/* Quick View Button */}
+        {/* Quick View — visible on hover */}
         {onQuickView && (
           <motion.button
             onClick={handleQuickViewClick}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: isHovered ? 1 : 0 }}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: isHovered ? 1 : 0, y: isHovered ? 0 : 6 }}
             transition={{ duration: 0.2 }}
-            className="absolute top-11 right-3 p-2 rounded-sm backdrop-blur-md transition-all z-20 cursor-pointer"
+            className="absolute top-14 right-3 w-9 h-9 rounded-full flex items-center justify-center z-20"
             style={{
-              background: 'rgba(6,10,22,0.85)',
-              border: '1px solid rgba(0,255,255,0.4)',
-              boxShadow: '0 0 10px rgba(0,255,255,0.3)',
+              background: isLight ? 'rgba(255,255,255,0.95)' : 'rgba(30,41,59,0.9)',
+              border: `1px solid ${border}`,
+              boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
             }}
             title="Quick View"
           >
-            <Eye className="w-3.5 h-3.5 text-[#00FFFF]" />
+            <Eye className="w-4 h-4" style={{ color: '#2563EB' }} />
           </motion.button>
         )}
 
-        {/* Quick Add Slide-up Neon Button */}
+        {/* Add to Cart Slide-up */}
         <motion.div
-          initial={{ y: 25, opacity: 0 }}
-          animate={{ y: isHovered ? 0 : 25, opacity: isHovered ? 1 : 0 }}
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: isHovered && !isOutOfStock ? 0 : 20, opacity: isHovered && !isOutOfStock ? 1 : 0 }}
           transition={{ duration: 0.22, ease: [0.25, 0.1, 0.25, 1] }}
           className="absolute bottom-3 inset-x-3 z-20"
         >
           <button
             onClick={handleQuickAdd}
-            className="w-full py-2.5 px-3 flex items-center justify-center gap-2 cursor-pointer transition-all duration-300 font-bold uppercase tracking-[0.15em] text-[11px]"
+            disabled={isAdding}
+            className="w-full py-2.5 flex items-center justify-center gap-2 font-semibold text-sm text-white rounded-xl transition-all"
             style={{
-              background: 'linear-gradient(135deg, rgba(255,215,0,0.3) 0%, rgba(255,140,0,0.2) 100%)',
-              border: '1px solid #FFD700',
-              color: '#FFD700',
-              backdropFilter: 'blur(12px)',
-              boxShadow: '0 0 20px rgba(255,215,0,0.45), inset 0 0 10px rgba(255,215,0,0.15)',
-              fontFamily: 'var(--font-rajdhani)',
-              clipPath: 'polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px))',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'linear-gradient(135deg, rgba(255,215,0,0.6) 0%, rgba(255,140,0,0.4) 100%)';
-              e.currentTarget.style.color = '#FFFFFF';
-              e.currentTarget.style.boxShadow = '0 0 30px rgba(255,215,0,0.8)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'linear-gradient(135deg, rgba(255,215,0,0.3) 0%, rgba(255,140,0,0.2) 100%)';
-              e.currentTarget.style.color = '#FFD700';
-              e.currentTarget.style.boxShadow = '0 0 20px rgba(255,215,0,0.45), inset 0 0 10px rgba(255,215,0,0.15)';
+              background: isAdding ? '#1D4ED8' : '#2563EB',
+              boxShadow: '0 4px 14px rgba(37,99,235,0.45)',
             }}
           >
-            <ShoppingBag className="w-3.5 h-3.5" />
-            <span className={language === 'si' ? 'font-sinhala text-xs' : ''}>
-              {t('acquirePiece')}
-            </span>
+            <ShoppingCart className="w-4 h-4" />
+            {isAdding ? 'Added!' : 'Add to Cart'}
           </button>
         </motion.div>
-      </div>
 
-      {/* Product Details Section */}
-      <div className="p-4 flex flex-col flex-1 justify-between">
-        <div>
-          {/* Rating */}
-          <div className="flex items-center gap-1.5 mb-1.5">
-            <div className="flex items-center text-[#FFD700]">
-              <Star className="w-3 h-3 fill-current" />
-            </div>
-            <span className="text-[10px] font-bold text-[#FFD700]/80 tracking-wider" style={{ fontFamily: 'var(--font-rajdhani)' }}>
-              {product.rating || 5.0} ({product.review_count || 14})
+        {/* Out of Stock Overlay */}
+        {isOutOfStock && (
+          <div
+            className="absolute inset-0 flex items-center justify-center"
+            style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(2px)' }}
+          >
+            <span className="px-3 py-1.5 text-xs font-semibold rounded-full bg-white text-gray-500 border border-gray-200 shadow-sm">
+              Out of Stock
             </span>
           </div>
+        )}
+      </div>
 
-          {/* Title */}
-          <Link
-            href={`/products/${product.slug}`}
-            onClick={() => sound.playClick()}
-          >
-            <h3
-              className={`text-sm transition-colors line-clamp-1 leading-snug tracking-wide ${
-                language === 'si' ? 'font-sinhala font-bold' : 'font-serif'
-              }`}
-              style={{
-                color: theme === 'light' ? (isHovered ? '#B8860B' : '#0F172A') : (isHovered ? '#FFD700' : '#E8E3D8'),
-              }}
-            >
-              {t(product.title)}
-            </h3>
-          </Link>
+      {/* Product Info */}
+      <div
+        className="p-4 flex flex-col flex-1"
+        style={{
+          background: bg,
+          borderTop: `1px solid ${border}`,
+        }}
+      >
+        {/* Rating */}
+        <div className="flex items-center gap-1.5 mb-2">
+          <div className="flex items-center gap-0.5">
+            {Array.from({ length: 5 }, (_, i) => (
+              <Star
+                key={i}
+                className="w-3 h-3"
+                style={{
+                  fill: i < Math.floor(rating) ? '#F59E0B' : 'none',
+                  color: i < Math.floor(rating) ? '#F59E0B' : '#CBD5E1',
+                }}
+              />
+            ))}
+          </div>
+          <span className="text-[11px] font-medium" style={{ color: txtMute }}>
+            {rating.toFixed(1)}
+            {reviewCount > 0 && (
+              <span style={{ color: txtMute }}> ({reviewCount})</span>
+            )}
+          </span>
         </div>
 
-        {/* Pricing in Sri Lankan Rupees (LKR) */}
-        <div
-          className="mt-3 pt-2.5 border-t flex items-baseline justify-between"
-          style={{
-            borderColor: theme === 'light' ? 'rgba(212, 175, 55, 0.25)' : 'rgba(255, 215, 0, 0.15)',
-          }}
-        >
+        {/* Vendor badge if available */}
+        {(product as any).vendor_name && (
+          <span className="vendor-badge mb-1.5">{(product as any).vendor_name}</span>
+        )}
+
+        {/* Title */}
+        <Link href={`/products/${product.slug}`} onClick={() => sound.playClick()}>
+          <h3
+            className="text-sm font-semibold leading-snug mb-2 line-clamp-2 transition-colors"
+            style={{ color: txtMain, fontFamily: 'var(--font-inter)' }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = '#2563EB'; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = txtMain; }}
+          >
+            {t(product.title)}
+          </h3>
+        </Link>
+
+        {/* Stock indicator */}
+        <div className={`stock-pill mb-3 ${isLowStock ? 'low' : isOutOfStock ? 'out' : ''}`}>
+          <span
+            className="w-1.5 h-1.5 rounded-full inline-block flex-shrink-0"
+            style={{
+              background: isOutOfStock ? '#EF4444' : isLowStock ? '#F59E0B' : '#10B981',
+            }}
+          />
+          {isOutOfStock
+            ? 'Out of stock'
+            : isLowStock
+            ? `${stockQty} left`
+            : 'In stock'}
+        </div>
+
+        {/* Price Row */}
+        <div className="flex items-center justify-between mt-auto">
           <div className="flex items-baseline gap-2">
             <span
-              className="text-sm font-bold tracking-tight"
-              style={{
-                fontFamily: 'var(--font-rajdhani)',
-                color: theme === 'light' ? '#B8860B' : '#FFD700',
-                textShadow: theme === 'light' ? 'none' : '0 0 10px rgba(255,215,0,0.4)',
-              }}
+              className="text-base font-bold"
+              style={{ color: isSale ? '#EF4444' : (isLight ? '#0F172A' : '#F1F5F9') }}
             >
               {formatPrice(product.sale_price ?? product.price)}
             </span>
             {isSale && (
               <span
                 className="text-xs line-through"
-                style={{
-                  fontFamily: 'var(--font-rajdhani)',
-                  color: theme === 'light' ? '#94A3B8' : 'rgba(232, 227, 216, 0.45)',
-                }}
+                style={{ color: txtMute }}
               >
                 {formatPrice(product.price)}
               </span>
             )}
           </div>
+          {/* COD pill */}
           <span
-            className="text-[9px] uppercase tracking-[0.16em] font-bold"
+            className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
             style={{
-              fontFamily: 'var(--font-rajdhani)',
-              color: theme === 'light' ? '#0284C7' : 'rgba(0, 255, 255, 0.85)',
+              background: isLight ? '#F0FDF4' : 'rgba(16,185,129,0.12)',
+              color: '#059669',
             }}
           >
-            LKR
+            COD
           </span>
         </div>
       </div>

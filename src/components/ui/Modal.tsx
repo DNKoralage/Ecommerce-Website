@@ -39,50 +39,62 @@ export const Modal: React.FC<ModalProps> = ({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
+            transition={{ duration: 0.2 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/80 backdrop-blur-md"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm"
           />
 
           {/* Dialog Container */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 15 }}
+            initial={{ opacity: 0, scale: 0.96, y: 12 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 15 }}
-            transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
-            className={`relative w-full ${maxWidth} text-[#E8E3D8] z-10 my-8 overflow-hidden`}
+            exit={{ opacity: 0, scale: 0.96, y: 12 }}
+            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            className={`relative w-full ${maxWidth} z-10 my-8 overflow-hidden rounded-3xl shadow-2xl`}
             style={{
-              background: 'rgba(6, 9, 22, 0.95)',
-              border: '1px solid rgba(255, 215, 0, 0.35)',
-              boxShadow: '0 0 50px rgba(0, 0, 0, 0.9), 0 0 30px rgba(255, 215, 0, 0.12), inset 0 0 20px rgba(0, 255, 255, 0.03)',
-              backdropFilter: 'blur(20px)',
-              clipPath: 'polygon(0 0, calc(100% - 15px) 0, 100% 15px, 100% 100%, 15px 100%, 0 calc(100% - 15px))',
+              background: 'var(--bg-card)',
+              border: '1px solid var(--border)',
+              color: 'var(--text-main)',
             }}
           >
-            {/* Corner cyber decor */}
-            <div className="absolute top-1.5 left-1.5 w-3 h-3 border-t-2 border-l-2 border-[#FFD700]" />
-            <div className="absolute top-1.5 right-1.5 w-3 h-3 border-t-2 border-r-2 border-[#00FFFF]" />
-            <div className="absolute bottom-1.5 left-1.5 w-3 h-3 border-b-2 border-l-2 border-[#00FFFF]" />
-            <div className="absolute bottom-1.5 right-1.5 w-3 h-3 border-b-2 border-r-2 border-[#FFD700]" />
-
-            <div className="flex items-center justify-between p-6 border-b border-yellow-500/15">
+            {/* Header */}
+            <div
+              className="flex items-center justify-between px-6 py-4.5 border-b"
+              style={{ borderColor: 'var(--border)' }}
+            >
               {title ? (
-                <h3 className="font-serif text-xl text-white tracking-wide">{title}</h3>
+                <h3 className="font-heading font-semibold text-lg" style={{ color: 'var(--text-main)' }}>
+                  {title}
+                </h3>
               ) : (
                 <div />
               )}
               <button
                 onClick={onClose}
-                className="p-2 text-[#E8E3D8]/60 hover:text-[#FFD700] transition-colors cursor-pointer"
+                className="w-8 h-8 rounded-full flex items-center justify-center transition-colors"
+                style={{
+                  background: 'var(--bg-muted)',
+                  color: 'var(--text-muted)',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'var(--blue-50)';
+                  e.currentTarget.style.color = 'var(--blue)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'var(--bg-muted)';
+                  e.currentTarget.style.color = 'var(--text-muted)';
+                }}
                 aria-label="Close modal"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
-            <div className="p-6">{children}</div>
+            {/* Body */}
+            <div className="p-6 sm:p-7">{children}</div>
           </motion.div>
         </div>
       )}
     </AnimatePresence>
   );
 };
+

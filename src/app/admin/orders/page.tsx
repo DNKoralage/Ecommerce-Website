@@ -8,11 +8,11 @@ import { Order, FulfillmentStatus } from '@/types';
 import { Suspense } from 'react';
 
 function formatCurrency(n: number) {
-  return '₹' + n.toLocaleString('en-IN');
+  return 'Rs. ' + n.toLocaleString('en-LK');
 }
 
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+  return new Date(iso).toLocaleDateString('en-LK', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 const FULFILLMENT_STATUSES: { value: FulfillmentStatus | 'all'; label: string }[] = [
@@ -174,7 +174,7 @@ function OrderDetailModal({ order, onClose, onUpdate }: OrderDetailModalProps) {
                 }}
               />
               <input
-                placeholder="Carrier (e.g. BlueDart, DTDC)"
+                placeholder="Carrier (e.g. Kapruka VIP, Prompt Xpress, DHL)"
                 value={carrier}
                 onChange={e => setCarrier(e.target.value)}
                 style={{
@@ -223,6 +223,20 @@ function OrdersContent() {
 
   useEffect(() => {
     api.getOrders().then(o => { setOrders(o); setLoading(false); });
+
+    // Live listener: refresh orders when a new order is placed (same-tab or cross-tab)
+    const handleOrdersUpdate = () => {
+      api.getOrders().then(o => setOrders(o));
+    };
+    window.addEventListener('orders_updated', handleOrdersUpdate);
+    window.addEventListener('bookings_updated', handleOrdersUpdate);
+    window.addEventListener('storage', (e) => {
+      if (e.key === 'luxe_orders' || e.key === 'luxe_booking_requests') handleOrdersUpdate();
+    });
+    return () => {
+      window.removeEventListener('orders_updated', handleOrdersUpdate);
+      window.removeEventListener('bookings_updated', handleOrdersUpdate);
+    };
   }, []);
 
   const setStatusFilter = useCallback((val: string) => {

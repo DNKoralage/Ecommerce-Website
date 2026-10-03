@@ -6,10 +6,10 @@ import { api } from '@/lib/store';
 import { Order } from '@/types';
 
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+  return new Date(iso).toLocaleDateString('en-LK', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 function formatCurrency(n: number) {
-  return '₹' + n.toLocaleString('en-IN');
+  return 'Rs. ' + n.toLocaleString('en-LK');
 }
 
 interface CustomerSummary {

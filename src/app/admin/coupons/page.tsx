@@ -61,7 +61,7 @@ function CouponForm({ onClose, onSave }: { onClose: () => void; onSave: (c: Coup
               <label style={labelStyle}>Type</label>
               <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))} style={{ ...inputStyle, cursor: 'pointer' }}>
                 <option value="percentage" style={{ background: '#111118' }}>Percentage (%)</option>
-                <option value="fixed" style={{ background: '#111118' }}>Fixed Amount (₹)</option>
+                <option value="fixed" style={{ background: '#111118' }}>Fixed Amount (Rs.)</option>
               </select>
             </div>
             <div>
@@ -71,7 +71,7 @@ function CouponForm({ onClose, onSave }: { onClose: () => void; onSave: (c: Coup
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
             <div>
-              <label style={labelStyle}>Min Order Amount (₹)</label>
+              <label style={labelStyle}>Min Order Amount (Rs.)</label>
               <input type="number" value={form.min_order} onChange={e => setForm(f => ({ ...f, min_order: e.target.value }))} style={inputStyle} placeholder="0" />
             </div>
             <div>
@@ -161,15 +161,15 @@ export default function AdminCouponsPage() {
                   >
                     <td style={{ padding: '14px 20px', fontFamily: 'monospace', fontWeight: 700, fontSize: 14, color: '#C9A96E' }}>{c.code}</td>
                     <td style={{ padding: '14px 20px', color: '#9A9490' }}>{c.type === 'percentage' ? 'Percentage' : 'Fixed'}</td>
-                    <td style={{ padding: '14px 20px', color: '#E8E6E1', fontWeight: 600 }}>{c.type === 'percentage' ? `${c.value}%` : `₹${c.value}`}</td>
+                    <td style={{ padding: '14px 20px', color: '#E8E6E1', fontWeight: 600 }}>{c.type === 'percentage' ? `${c.value}%` : `Rs. ${c.value}`}</td>
                     <td style={{ padding: '14px 20px', color: '#9A9490' }}>
-                      ₹{((c.min_order_amount ?? c.min_order_value ?? 0)).toLocaleString('en-IN')}
+                      Rs. {((c.min_order_amount ?? c.min_order_value ?? 0)).toLocaleString('en-LK')}
                     </td>
                     <td style={{ padding: '14px 20px', color: '#9A9490' }}>
                       {c.times_used ?? c.uses_count ?? 0} / {c.usage_limit ?? c.max_uses ?? '∞'}
                     </td>
                     <td style={{ padding: '14px 20px', color: '#9A9490' }}>
-                      {(c.valid_to || c.expires_at) ? new Date(String(c.valid_to || c.expires_at)).toLocaleDateString('en-IN') : '—'}
+                      {(c.valid_to || c.expires_at) ? new Date(String(c.valid_to || c.expires_at)).toLocaleDateString('en-LK') : '—'}
                     </td>
                     <td style={{ padding: '14px 20px' }}>
                       <button onClick={() => handleToggle(c)} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>

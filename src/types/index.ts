@@ -7,6 +7,9 @@ export interface Profile {
   phone: string | null;
   avatar_url: string | null;
   role: UserRole;
+  is_verified?: boolean;
+  phone_verified?: boolean;
+  is_primary_admin?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -23,6 +26,9 @@ export interface BookingRequest {
   preferred_time: string;
   guests_count: number;
   special_requirements?: string;
+  order_id?: string;
+  items_summary?: string;
+  total_amount?: number;
   status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
   created_at: string;
 }
@@ -205,7 +211,7 @@ export interface Address {
   created_at?: string;
 }
 
-export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded';
+export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded' | 'unpaid';
 export type FulfillmentStatus = 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
 
 export interface OrderItem {

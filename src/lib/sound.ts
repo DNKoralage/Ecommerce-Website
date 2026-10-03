@@ -3,6 +3,7 @@
 class SoundManager {
   private ctx: AudioContext | null = null;
   private isMuted: boolean = false;
+  private lastBeep: number = 0;
 
   constructor() {
     if (typeof window !== 'undefined') {
@@ -66,7 +67,34 @@ class SoundManager {
     } catch (_e) {}
   }
 
-  // Gentle crystal shimmer on hovering over products / interactive gems
+  // Ultra-subtle cursor movement beep — throttled to max 20/sec
+  public playCursorBeep() {
+    if (this.isMuted) return;
+    const now = Date.now();
+    if (now - this.lastBeep < 50) return; // throttle: max 20/sec
+    this.lastBeep = now;
+    try {
+      this.initCtx();
+      if (!this.ctx) return;
+
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(1200, this.ctx.currentTime);
+
+      gain.gain.setValueAtTime(0.003, this.ctx.currentTime); // very quiet
+      gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + 0.02);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+
+      osc.start();
+      osc.stop(this.ctx.currentTime + 0.022);
+    } catch (_e) {}
+  }
+
+  // Gentle crystal shimmer on hovering over products
   public playChime() {
     if (this.isMuted) return;
     try {
@@ -117,6 +145,33 @@ class SoundManager {
         osc.stop(now + i * 0.06 + 0.22);
       });
     } catch (_e) {}
+  }
+
+  // Notification ping
+  public playNotification() {
+    if (this.isMuted) return;
+    try {
+      this.initCtx();
+      if (!this.ctx) return;
+      const now = this.ctx.currentTime;
+      [800, 1000].forEach((freq, i) => {
+        if (!this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, now + i * 0.12);
+        gain.gain.setValueAtTime(0.06, now + i * 0.12);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.12 + 0.15);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now + i * 0.12);
+        osc.stop(now + i * 0.12 + 0.16);
+      });
+    } catch (_e) {}
+  }
+
+  public playAdd() {
+    this.playSuccess();
   }
 }
 

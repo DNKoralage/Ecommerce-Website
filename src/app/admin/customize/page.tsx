@@ -435,16 +435,27 @@ function HeroTab({ slides, onChange }: { slides: HeroSlide[]; onChange: (s: Hero
    IDENTITY TAB
 ══════════════════════════════════════════════════════════════════════ */
 function IdentityTab({ s, onChange }: {
-  s: Pick<SiteSettings, 'site_name' | 'tagline' | 'announcement_bar_active' | 'announcement_bar_text' | 'announcement_bar_link'>;
+  s: Pick<SiteSettings, 'site_name' | 'tagline' | 'logo_url' | 'announcement_bar_active' | 'announcement_bar_text' | 'announcement_bar_link'>;
   onChange: (p: Partial<typeof s>) => void;
 }) {
   return (
     <div style={{ display: 'grid', gap: 24 }}>
       <div style={card}>
         <p style={secTitle}><Globe size={16} color="#C9A96E" /> Store Identity</p>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
           <div><label style={lbl}>Store Name</label><input value={s.site_name} onChange={e => onChange({ site_name: e.target.value })} style={inp} /></div>
           <div><label style={lbl}>Tagline</label><input value={s.tagline} onChange={e => onChange({ tagline: e.target.value })} style={inp} /></div>
+        </div>
+        <div>
+          <label style={lbl}>Logo URL (optional)</label>
+          <input value={s.logo_url || ''} onChange={e => onChange({ logo_url: e.target.value || null })} style={inp} placeholder="https://yoursite.com/logo.png" />
+          {s.logo_url && (
+            <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 10 }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={s.logo_url} alt="Logo preview" style={{ height: 40, maxWidth: 160, objectFit: 'contain', borderRadius: 6, background: 'rgba(255,255,255,0.05)', padding: 4 }} />
+              <button onClick={() => onChange({ logo_url: null })} style={{ ...btnGhost, color: '#F87171', borderColor: 'rgba(248,113,113,0.25)', padding: '4px 10px', fontSize: 11 }}>Remove</button>
+            </div>
+          )}
         </div>
       </div>
       <div style={card}>
@@ -487,7 +498,7 @@ function IdentityTab({ s, onChange }: {
 export default function AdminCustomizePage() {
   const [tab, setTab] = useState<Tab>('navigation');
   const [cust, setCust] = useState<SiteCustomization | null>(null);
-  const [siteSt, setSiteSt] = useState<Pick<SiteSettings, 'site_name' | 'tagline' | 'announcement_bar_active' | 'announcement_bar_text' | 'announcement_bar_link'> | null>(null);
+  const [siteSt, setSiteSt] = useState<Pick<SiteSettings, 'site_name' | 'tagline' | 'logo_url' | 'announcement_bar_active' | 'announcement_bar_text' | 'announcement_bar_link'> | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -495,7 +506,7 @@ export default function AdminCustomizePage() {
   const load = useCallback(async () => {
     const [c, s] = await Promise.all([api.getSiteCustomization(), api.getSiteSettings()]);
     setCust(c);
-    setSiteSt({ site_name: s.site_name, tagline: s.tagline, announcement_bar_active: s.announcement_bar_active, announcement_bar_text: s.announcement_bar_text, announcement_bar_link: s.announcement_bar_link });
+    setSiteSt({ site_name: s.site_name, tagline: s.tagline, logo_url: s.logo_url, announcement_bar_active: s.announcement_bar_active, announcement_bar_text: s.announcement_bar_text, announcement_bar_link: s.announcement_bar_link });
     setLoading(false);
   }, []);
 

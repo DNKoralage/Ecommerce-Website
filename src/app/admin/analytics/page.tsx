@@ -9,7 +9,7 @@ import { api } from '@/lib/store';
 import { Order, Product } from '@/types';
 
 function formatCurrency(n: number) {
-  return '₹' + n.toLocaleString('en-IN');
+  return 'Rs. ' + n.toLocaleString('en-LK');
 }
 
 function MiniBar({ value, max, color }: { value: number; max: number; color: string }) {

@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, ChevronRight, ArrowRight, Sparkles } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ArrowRight, Tag, Zap } from 'lucide-react';
 import { HeroSlide } from '@/types';
 import { useLanguage } from '@/context/LanguageContext';
 import { useTheme } from '@/context/ThemeContext';
@@ -18,8 +18,8 @@ export default function HeroSection({ slides }: HeroSectionProps) {
   const [isPaused, setIsPaused] = useState(false);
   const { language } = useLanguage();
   const { theme } = useTheme();
+  const isLight = theme === 'light';
 
-  // Auto-advance slides every 6 seconds unless user is hovering
   useEffect(() => {
     if (slides.length <= 1 || isPaused) return;
     const interval = setInterval(() => {
@@ -31,29 +31,33 @@ export default function HeroSection({ slides }: HeroSectionProps) {
   if (!slides || slides.length === 0) return null;
   const slide = slides[current];
 
-  const currentHeading = language === 'si' && slide.heading_si ? slide.heading_si : slide.heading;
+  const currentHeading    = language === 'si' && slide.heading_si    ? slide.heading_si    : slide.heading;
   const currentSubheading = language === 'si' && slide.subheading_si ? slide.subheading_si : slide.subheading;
-  const currentCta = language === 'si' && slide.cta_text_si ? slide.cta_text_si : slide.cta_text;
-  const currentBadge = language === 'si' && slide.badge_si ? slide.badge_si : (slide.badge || '✦ Authentic Ceylon Living Heritage');
+  const currentCta        = language === 'si' && slide.cta_text_si   ? slide.cta_text_si   : slide.cta_text;
+  const currentBadge      = language === 'si' && slide.badge_si      ? slide.badge_si      : (slide.badge || '🎉 Special Offer');
 
   return (
     <section
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
-      className="relative w-full h-[88vh] min-h-[620px] max-h-[960px] overflow-hidden"
+      className="relative w-full overflow-hidden"
       style={{
-        background: theme === 'light' ? '#F8F6F0' : '#050814',
+        minHeight: '520px',
+        height: 'clamp(440px, 70vh, 760px)',
+        background: isLight
+          ? 'linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 40%, #F0F9FF 100%)'
+          : 'linear-gradient(135deg, #0F172A 0%, #1E3A5F 40%, #0F172A 100%)',
       }}
     >
-      {/* 1. Animated Slide Background with High-Resolution Imagery */}
+      {/* Background Image with Overlay */}
       <AnimatePresence mode="wait">
         <motion.div
           key={slide.id}
-          initial={{ opacity: 0, scale: 1.08 }}
+          initial={{ opacity: 0, scale: 1.06 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 1.2, ease: [0.4, 0, 0.2, 1] }}
-          className="absolute inset-0 w-full h-full"
+          transition={{ duration: 1.0, ease: [0.4, 0, 0.2, 1] }}
+          className="absolute inset-0"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -61,146 +65,90 @@ export default function HeroSection({ slides }: HeroSectionProps) {
             alt={currentHeading}
             className="w-full h-full object-cover object-center"
           />
-
-          {/* Cinematic Dual Gradient Overlays tailored to Theme */}
-          {theme === 'dark' ? (
-            <>
-              <div
-                className="absolute inset-0"
-                style={{
-                  background:
-                    'linear-gradient(to top, rgba(3,5,15,0.95) 0%, rgba(3,5,15,0.65) 45%, rgba(3,5,15,0.2) 100%)',
-                }}
-              />
-              <div
-                className="absolute inset-0"
-                style={{
-                  background:
-                    'linear-gradient(to right, rgba(3,5,15,0.85) 0%, rgba(3,5,15,0.4) 60%, transparent 100%)',
-                }}
-              />
-              <div
-                className="absolute inset-0 pointer-events-none"
-                style={{
-                  background:
-                    'radial-gradient(ellipse 60% 40% at 30% 90%, rgba(255,215,0,0.1) 0%, transparent 70%)',
-                }}
-              />
-            </>
-          ) : (
-            <>
-              <div
-                className="absolute inset-0"
-                style={{
-                  background:
-                    'linear-gradient(to top, rgba(248,246,240,0.96) 0%, rgba(248,246,240,0.6) 50%, rgba(248,246,240,0.2) 100%)',
-                }}
-              />
-              <div
-                className="absolute inset-0"
-                style={{
-                  background:
-                    'linear-gradient(to right, rgba(248,246,240,0.92) 0%, rgba(248,246,240,0.5) 60%, transparent 100%)',
-                }}
-              />
-            </>
-          )}
+          {/* Gradient overlay */}
+          <div
+            className="absolute inset-0"
+            style={{
+              background: isLight
+                ? 'linear-gradient(to right, rgba(239,246,255,0.95) 0%, rgba(219,234,254,0.85) 50%, rgba(239,246,255,0.4) 100%)'
+                : 'linear-gradient(to right, rgba(15,23,42,0.97) 0%, rgba(15,23,42,0.82) 55%, rgba(15,23,42,0.3) 100%)',
+            }}
+          />
         </motion.div>
       </AnimatePresence>
 
-      {/* 2. Cyber-Heritage Corner Accents */}
-      <div className="absolute top-6 left-6 z-20 pointer-events-none opacity-40">
-        <div className="w-8 h-8 border-t-2 border-l-2 border-[#FFD700]" />
-      </div>
-      <div className="absolute top-6 right-6 z-20 pointer-events-none opacity-40">
-        <div className="w-8 h-8 border-t-2 border-r-2 border-[#00FFFF]" />
-      </div>
+      {/* Decorative circles */}
+      <div
+        className="absolute -top-24 -right-24 w-96 h-96 rounded-full pointer-events-none opacity-20"
+        style={{ background: 'radial-gradient(circle, #3B82F6 0%, transparent 70%)' }}
+      />
+      <div
+        className="absolute -bottom-20 right-1/3 w-64 h-64 rounded-full pointer-events-none opacity-10"
+        style={{ background: 'radial-gradient(circle, #60A5FA 0%, transparent 70%)' }}
+      />
 
-      {/* 3. Hero Slide Main Content */}
-      <div className="relative z-20 max-w-[1440px] mx-auto h-full px-6 lg:px-16 flex flex-col justify-end pb-24 sm:pb-28">
-        <div className="max-w-2xl">
+      {/* Content */}
+      <div className="relative z-10 max-w-[1440px] mx-auto h-full px-6 lg:px-16 flex flex-col justify-center">
+        <div className="max-w-xl">
           {/* Badge */}
           <motion.div
             key={`badge-${slide.id}`}
-            initial={{ opacity: 0, y: 15 }}
+            initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            className="inline-flex items-center gap-2 mb-4"
+            transition={{ duration: 0.45, delay: 0.1 }}
+            className="mb-5"
           >
             <span
-              className="text-[10px] font-bold tracking-[0.22em] uppercase px-3 py-1.5 flex items-center gap-1.5"
+              className="inline-flex items-center gap-2 px-4 py-1.5 text-sm font-semibold rounded-full"
               style={{
-                background:
-                  theme === 'light'
-                    ? 'rgba(255, 255, 255, 0.95)'
-                    : 'linear-gradient(135deg, rgba(255,215,0,0.18), rgba(255,140,0,0.1))',
-                border:
-                  theme === 'light'
-                    ? '1px solid rgba(212, 175, 55, 0.45)'
-                    : '1px solid rgba(255,215,0,0.5)',
-                color: theme === 'light' ? '#996515' : '#FFD700',
-                boxShadow:
-                  theme === 'light'
-                    ? '0 2px 10px rgba(0,0,0,0.06)'
-                    : '0 0 14px rgba(255,215,0,0.25)',
-                fontFamily: 'var(--font-rajdhani)',
-                clipPath:
-                  'polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px))',
+                background: 'rgba(37,99,235,0.12)',
+                color: '#2563EB',
+                border: '1px solid rgba(37,99,235,0.25)',
+                backdropFilter: 'blur(8px)',
               }}
             >
-              <Sparkles className="w-3 h-3 text-[#00FFFF]" />
-              <span className={language === 'si' ? 'font-sinhala text-[11px]' : ''}>
-                {currentBadge}
-              </span>
+              <Zap className="w-3.5 h-3.5" />
+              {currentBadge}
             </span>
           </motion.div>
 
           {/* Heading */}
           <motion.h1
             key={`heading-${slide.id}-${language}`}
-            initial={{ opacity: 0, y: 25 }}
+            initial={{ opacity: 0, y: 22 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
-            className={`text-3xl sm:text-5xl lg:text-6xl font-normal tracking-tight leading-[1.12] mb-4 ${
-              language === 'si' ? 'font-sinhala font-bold leading-tight' : 'font-serif'
-            }`}
+            transition={{ duration: 0.6, delay: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
+            className="text-4xl sm:text-5xl lg:text-6xl font-bold leading-[1.1] mb-4 tracking-tight"
             style={{
-              color: theme === 'light' ? '#0F172A' : '#FFFFFF',
-              textShadow:
-                theme === 'light'
-                  ? 'none'
-                  : '0 0 25px rgba(255,215,0,0.25)',
+              color: isLight ? '#0F172A' : '#F1F5F9',
+              fontFamily: 'var(--font-outfit)',
             }}
           >
             {currentHeading}
           </motion.h1>
 
-          {/* Golden / Cyan Neon Accent Line */}
+          {/* Blue accent line */}
           <motion.div
-            initial={{ scaleX: 0 }}
+            initial={{ scaleX: 0, originX: 0 }}
             animate={{ scaleX: 1 }}
-            transition={{ duration: 0.8, delay: 0.4 }}
-            className="origin-left mb-5"
+            transition={{ duration: 0.7, delay: 0.35 }}
+            className="mb-5"
             style={{
-              height: '2px',
-              width: '130px',
-              background: 'linear-gradient(90deg, #FFD700, #00FFFF, transparent)',
-              boxShadow: '0 0 10px rgba(255,215,0,0.6)',
+              height: '3px',
+              width: '72px',
+              background: 'linear-gradient(90deg, #2563EB, #60A5FA)',
+              borderRadius: '999px',
             }}
           />
 
           {/* Subheading */}
           <motion.p
             key={`sub-${slide.id}-${language}`}
-            initial={{ opacity: 0, y: 15 }}
+            initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.4 }}
-            className={`text-sm sm:text-base font-normal leading-relaxed max-w-xl mb-8 ${
-              language === 'si' ? 'font-sinhala text-[14px]' : ''
-            }`}
-            style={{
-              color: theme === 'light' ? '#334155' : 'rgba(235, 230, 220, 0.82)',
-            }}
+            transition={{ duration: 0.6, delay: 0.4 }}
+            className="text-base sm:text-lg leading-relaxed mb-8 max-w-md"
+            style={{ color: isLight ? '#475569' : '#94A3B8' }}
           >
             {currentSubheading}
           </motion.p>
@@ -208,112 +156,74 @@ export default function HeroSection({ slides }: HeroSectionProps) {
           {/* CTAs */}
           <motion.div
             key={`cta-${slide.id}`}
-            initial={{ opacity: 0, y: 15 }}
+            initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.55 }}
-            className="flex items-center gap-3.5 flex-wrap"
+            transition={{ duration: 0.5, delay: 0.5 }}
+            className="flex items-center gap-3 flex-wrap"
           >
             <Link
               href={slide.cta_link}
               onClick={() => sound.playClick()}
-              className="btn-neon-gold"
+              className="btn-primary text-sm"
             >
-              <span className={language === 'si' ? 'font-sinhala text-xs' : ''}>
-                {currentCta}
-              </span>
-              <ArrowRight className="w-4 h-4" />
+              {currentCta}
+              <ArrowRight className="w-4 h-4 ml-1" />
             </Link>
             <Link
               href="/products"
               onClick={() => sound.playClick()}
-              className="btn-neon-outline"
+              className="btn-outline text-sm"
             >
-              <span className={language === 'si' ? 'font-sinhala text-xs' : ''}>
-                {language === 'si' ? 'සියලු නිර්මාණ බලන්න' : 'Browse All Treasures'}
-              </span>
+              Browse All
             </Link>
           </motion.div>
         </div>
       </div>
 
-      {/* 4. Slide Navigation Controls (5 Interactive Dots + Prev/Next Arrows) */}
-      <div className="absolute bottom-8 right-6 lg:right-16 z-20 flex items-center gap-4">
-        {/* 5 Dots */}
-        <div className="flex items-center gap-2">
-          {slides.map((_, i) => (
-            <button
-              key={i}
-              onClick={() => {
-                sound.playClick();
-                setCurrent(i);
-              }}
-              aria-label={`Go to slide ${i + 1}`}
-              className="group py-2 cursor-pointer"
-            >
-              <div
-                className="h-1 transition-all duration-500 rounded-full"
+      {/* Slide Controls */}
+      {slides.length > 1 && (
+        <div className="absolute bottom-8 left-6 lg:left-16 z-20 flex items-center gap-3">
+          {/* Dots */}
+          <div className="flex items-center gap-2">
+            {slides.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => { sound.playClick(); setCurrent(i); }}
+                aria-label={`Slide ${i + 1}`}
+                className="transition-all duration-400 cursor-pointer rounded-full"
                 style={{
-                  width: current === i ? '36px' : '10px',
-                  background:
-                    current === i
-                      ? 'linear-gradient(90deg, #FFD700, #00FFFF)'
-                      : theme === 'light'
-                      ? 'rgba(15, 23, 42, 0.2)'
-                      : 'rgba(255, 215, 0, 0.25)',
-                  boxShadow:
-                    current === i ? '0 0 10px rgba(255,215,0,0.8)' : 'none',
+                  width: current === i ? '28px' : '8px',
+                  height: '8px',
+                  background: current === i ? '#2563EB' : (isLight ? 'rgba(37,99,235,0.3)' : 'rgba(148,163,184,0.4)'),
                 }}
               />
-            </button>
-          ))}
-        </div>
+            ))}
+          </div>
 
-        {/* Prev / Next Arrows */}
-        <div className="flex items-center gap-2 ml-1">
-          <button
-            onClick={() => {
-              sound.playClick();
-              setCurrent((prev) => (prev === 0 ? slides.length - 1 : prev - 1));
-            }}
-            className="p-2 backdrop-blur-md transition-all cursor-pointer rounded-xs"
-            style={{
-              background:
-                theme === 'light'
-                  ? 'rgba(255, 255, 255, 0.9)'
-                  : 'rgba(10, 15, 30, 0.8)',
-              border:
-                theme === 'light'
-                  ? '1px solid rgba(212, 175, 55, 0.4)'
-                  : '1px solid rgba(255, 215, 0, 0.3)',
-              color: theme === 'light' ? '#0F172A' : '#FFD700',
-            }}
-            aria-label="Previous slide"
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => {
-              sound.playClick();
-              setCurrent((prev) => (prev + 1) % slides.length);
-            }}
-            className="p-2 backdrop-blur-md transition-all cursor-pointer rounded-xs"
-            style={{
-              background:
-                theme === 'light'
-                  ? 'rgba(255, 255, 255, 0.9)'
-                  : 'rgba(10, 15, 30, 0.8)',
-              border:
-                theme === 'light'
-                  ? '1px solid rgba(212, 175, 55, 0.4)'
-                  : '1px solid rgba(255, 215, 0, 0.3)',
-              color: theme === 'light' ? '#0F172A' : '#FFD700',
-            }}
-            aria-label="Next slide"
-          >
-            <ChevronRight className="w-4 h-4" />
-          </button>
+          {/* Arrows */}
+          <div className="flex items-center gap-1.5 ml-2">
+            {[
+              { icon: ChevronLeft,  label: 'Previous', fn: () => setCurrent((p) => (p === 0 ? slides.length - 1 : p - 1)) },
+              { icon: ChevronRight, label: 'Next',     fn: () => setCurrent((p) => (p + 1) % slides.length) },
+            ].map(({ icon: Icon, label, fn }) => (
+              <button
+                key={label}
+                onClick={() => { sound.playClick(); fn(); }}
+                className="p-2 rounded-xl transition-all cursor-pointer"
+                style={{
+                  background: isLight ? 'rgba(255,255,255,0.9)' : 'rgba(30,41,59,0.8)',
+                  border: `1px solid ${isLight ? '#E2E8F0' : 'rgba(51,65,85,0.7)'}`,
+                  color: isLight ? '#0F172A' : '#F1F5F9',
+                  backdropFilter: 'blur(8px)',
+                }}
+                aria-label={label}
+              >
+                <Icon className="w-4 h-4" />
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </section>
   );
 }

@@ -16,6 +16,9 @@ import {
   Gem,
   Sparkles,
   Calendar,
+  KeyRound,
+  Phone,
+  Mail,
 } from 'lucide-react';
 import Header from '@/components/storefront/Header';
 import Footer from '@/components/storefront/Footer';
@@ -23,11 +26,58 @@ import { defaultSiteSettings } from '@/lib/seed-data';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/store';
 import { BookingRequest } from '@/types';
+import { sendOtp, verifyOtp } from '@/lib/otp';
 
 export default function AccountPage() {
-  const { user, logout, loginDemo, isAdmin } = useAuth();
+  const { user, logout, loginDemo, isAdmin, verifyOtpCode } = useAuth();
   const [activeTab, setActiveTab] = useState<'orders' | 'bookings' | 'profile' | 'addresses'>('orders');
   const [bookings, setBookings] = useState<BookingRequest[]>([]);
+
+  // OTP Verification States
+  const [otpCode, setOtpCode] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpSending, setOtpSending] = useState(false);
+  const [otpVerifying, setOtpVerifying] = useState(false);
+  const [demoCodeHint, setDemoCodeHint] = useState<string | null>(null);
+  const [otpStatusMsg, setOtpStatusMsg] = useState('');
+
+  const handleSendOtp = async (channel: 'phone' | 'email') => {
+    if (!user) return;
+    const target = channel === 'phone' ? (user.phone || user.email) : user.email;
+    setOtpSending(true);
+    setOtpStatusMsg('');
+    try {
+      const res = await sendOtp(target, channel);
+      if (res.success) {
+        setOtpSent(true);
+        setDemoCodeHint(res.otp);
+        setOtpStatusMsg(`Code dispatched to ${target}. (Demo Code: ${res.otp})`);
+      } else {
+        setOtpStatusMsg(res.message);
+      }
+    } catch {
+      setOtpStatusMsg('Failed to send code.');
+    } finally {
+      setOtpSending(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    if (!user || !otpCode.trim()) return;
+    setOtpVerifying(true);
+    try {
+      const res = await verifyOtpCode(otpCode.trim());
+      if (res.success) {
+        setOtpStatusMsg('Account successfully verified! Booking request privileges unlocked.');
+      } else {
+        setOtpStatusMsg(res.message);
+      }
+    } catch {
+      setOtpStatusMsg('Verification check failed.');
+    } finally {
+      setOtpVerifying(false);
+    }
+  };
 
   React.useEffect(() => {
     if (user) {
@@ -151,18 +201,35 @@ export default function AccountPage() {
                   <p className="text-xs text-[#E8E3D8]/50 truncate">{user?.email}</p>
                   
                   <div className="mt-3 flex flex-wrap gap-2">
-                    <div
-                      className="inline-flex items-center gap-1.5 px-2.5 py-0.5 text-[10px] font-bold tracking-wider uppercase"
-                      style={{
-                        background: 'rgba(0, 255, 136, 0.1)',
-                        border: '1px solid rgba(0, 255, 136, 0.3)',
-                        color: '#00FF88',
-                        fontFamily: 'var(--font-rajdhani)',
-                      }}
-                    >
-                      <ShieldCheck className="w-3 h-3" />
-                      Verified Patron
-                    </div>
+                    {user?.is_verified || isAdmin ? (
+                      <div
+                        className="inline-flex items-center gap-1.5 px-2.5 py-0.5 text-[10px] font-bold tracking-wider uppercase"
+                        style={{
+                          background: 'rgba(0, 255, 136, 0.1)',
+                          border: '1px solid rgba(0, 255, 136, 0.3)',
+                          color: '#00FF88',
+                          fontFamily: 'var(--font-rajdhani)',
+                        }}
+                      >
+                        <ShieldCheck className="w-3 h-3" />
+                        Verified Patron
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('profile')}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-0.5 text-[10px] font-bold tracking-wider uppercase cursor-pointer"
+                        style={{
+                          background: 'rgba(251, 191, 36, 0.15)',
+                          border: '1px solid rgba(251, 191, 36, 0.35)',
+                          color: '#FCD34D',
+                          fontFamily: 'var(--font-rajdhani)',
+                        }}
+                      >
+                        <KeyRound className="w-3 h-3" />
+                        Verify via OTP
+                      </button>
+                    )}
                     {isAdmin && (
                       <div
                         className="inline-flex items-center gap-1.5 px-2.5 py-0.5 text-[10px] font-bold tracking-wider uppercase"
@@ -301,18 +368,18 @@ export default function AccountPage() {
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-yellow-500/15">
                       <div>
                         <h2 className="font-serif text-2xl text-white font-medium">
-                          Atelier Appointments & Commissions
+                          Bookings & Custom Orders
                         </h2>
                         <p className="text-xs text-[#E8E3D8]/60 mt-1">
-                          Private gem consultations, bespoke handlooms, and sacred artisan commissions.
+                          Orders and custom requests placed with Ceylon Times vendors.
                         </p>
                       </div>
                       <Link
-                        href="/booking"
+                        href="/products"
                         className="btn-neon-gold text-xs py-2 px-4 inline-flex items-center gap-2 self-start sm:self-auto"
                       >
                         <Sparkles className="w-3.5 h-3.5" />
-                        <span>Place New Booking</span>
+                        <span>Browse Catalog</span>
                       </Link>
                     </div>
 
@@ -327,13 +394,13 @@ export default function AccountPage() {
                         <Calendar className="w-8 h-8 text-[#FFD700]/50 mx-auto" />
                         <h3 className="font-serif text-lg text-white">No Booking Requests Placed</h3>
                         <p className="text-xs text-[#E8E3D8]/60 max-w-sm mx-auto font-sans leading-relaxed">
-                          Reserve a private salon consultation with our certified gemologists or commission a custom Kandyan silk handloom with master artisans.
+                          Your Cash on Delivery requests and custom order reservations will appear here.
                         </p>
                         <Link
-                          href="/booking"
+                          href="/products"
                           className="btn-neon-gold text-xs inline-flex py-2.5 px-6"
                         >
-                          <span>Reserve Private Experience</span>
+                          <span>Explore Products</span>
                           <ArrowRight className="w-3.5 h-3.5 ml-1" />
                         </Link>
                       </div>
@@ -410,7 +477,7 @@ export default function AccountPage() {
                         </label>
                         <input
                           type="text"
-                          defaultValue={user?.full_name || 'Anushka Bandara'}
+                          defaultValue={user?.full_name || ''}
                           className="w-full p-3 text-white focus:outline-none"
                           style={{
                             background: 'rgba(4, 6, 16, 0.8)',
@@ -425,7 +492,7 @@ export default function AccountPage() {
                         <input
                           type="email"
                           disabled
-                          defaultValue={user?.email || 'patron@ceylontimes.lk'}
+                          defaultValue={user?.email || ''}
                           className="w-full p-3 text-[#E8E3D8]/50"
                           style={{
                             background: 'rgba(2, 3, 10, 0.5)',
@@ -439,7 +506,7 @@ export default function AccountPage() {
                         </label>
                         <input
                           type="tel"
-                          defaultValue={user?.phone || '+94 11 255 0199'}
+                          defaultValue={user?.phone || ''}
                           className="w-full p-3 text-white focus:outline-none"
                           style={{
                             background: 'rgba(4, 6, 16, 0.8)',
@@ -449,12 +516,20 @@ export default function AccountPage() {
                       </div>
                       <div>
                         <label className="block text-[11px] font-bold uppercase tracking-[0.18em] text-[#FFD700] mb-1.5" style={{ fontFamily: 'var(--font-rajdhani)' }}>
-                          Authorization Rank
+                          Authorization Rank &amp; Status
                         </label>
                         <input
                           type="text"
                           disabled
-                          defaultValue={isAdmin ? 'Ceylon Times Director (Full Administrative Access)' : 'Verified Island Patron'}
+                          defaultValue={
+                            isAdmin
+                              ? user?.is_primary_admin
+                                ? 'Ceylon Times Primary Director (Root Admin)'
+                                : 'Ceylon Times Secondary Administrator (Full Site Maintenance)'
+                              : user?.is_verified
+                              ? 'Verified Island Patron (Full Booking Privileges)'
+                              : 'Unverified Patron (OTP Verification Required)'
+                          }
                           className="w-full p-3 text-[#FFD700] font-bold"
                           style={{
                             background: 'rgba(255, 215, 0, 0.05)',
@@ -464,6 +539,103 @@ export default function AccountPage() {
                         />
                       </div>
                     </div>
+
+                    {!user?.is_verified && !isAdmin && (
+                      <div
+                        className="p-5 border space-y-3"
+                        style={{
+                          background: 'rgba(255, 215, 0, 0.05)',
+                          borderColor: 'rgba(255, 215, 0, 0.3)',
+                        }}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold uppercase tracking-[0.18em] text-[#FFD700] flex items-center gap-1.5" style={{ fontFamily: 'var(--font-rajdhani)' }}>
+                            <KeyRound className="w-4 h-4" />
+                            Verify Patron Account via OTP
+                          </span>
+                          <span className="text-[10px] uppercase font-bold text-amber-300 bg-amber-500/20 px-2 py-0.5 rounded border border-amber-500/40">
+                            Required for Bookings
+                          </span>
+                        </div>
+                        <p className="text-xs text-[#E8E3D8]/70 leading-relaxed font-sans">
+                          To protect the atelier reservation ledger, patrons must complete a one-time OTP verification before placing private appointment requests.
+                        </p>
+
+                        {!otpSent ? (
+                          <div className="flex flex-wrap gap-2 pt-1">
+                            <button
+                              type="button"
+                              onClick={() => handleSendOtp('phone')}
+                              disabled={otpSending}
+                              className="btn-neon-outline text-[11px] py-2 px-3 flex items-center gap-1.5"
+                            >
+                              <Phone className="w-3.5 h-3.5 text-[#00FFFF]" />
+                              <span>{otpSending ? 'Dispatching...' : `Verify via Phone (${user?.phone || 'Phone'})`}</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleSendOtp('email')}
+                              disabled={otpSending}
+                              className="btn-neon-outline text-[11px] py-2 px-3 flex items-center gap-1.5"
+                            >
+                              <Mail className="w-3.5 h-3.5 text-[#FFD700]" />
+                              <span>{otpSending ? 'Dispatching...' : `Verify via Email (${user?.email})`}</span>
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="space-y-3 pt-2">
+                            {demoCodeHint && (
+                              <div
+                                className="p-3 text-[11px] flex items-center justify-between font-sans"
+                                style={{
+                                  background: 'rgba(0, 255, 255, 0.08)',
+                                  border: '1px solid rgba(0, 255, 255, 0.3)',
+                                  color: '#00FFFF',
+                                }}
+                              >
+                                <span>Demo OTP Code: <strong className="font-mono text-white text-sm">{demoCodeHint}</strong></span>
+                                <button
+                                  type="button"
+                                  onClick={() => setOtpCode(demoCodeHint)}
+                                  className="text-[10px] uppercase font-bold tracking-wider text-[#FFD700] hover:underline cursor-pointer"
+                                >
+                                  Auto-Fill Code
+                                </button>
+                              </div>
+                            )}
+
+                            <div className="flex gap-2">
+                              <input
+                                type="text"
+                                maxLength={6}
+                                placeholder="Enter 6-digit OTP"
+                                value={otpCode}
+                                onChange={(e) => setOtpCode(e.target.value)}
+                                className="flex-1 p-2.5 text-center font-mono text-base tracking-widest text-white focus:outline-none"
+                                style={{
+                                  background: 'rgba(4, 6, 16, 0.8)',
+                                  border: '1px solid rgba(255, 215, 0, 0.3)',
+                                }}
+                              />
+                              <button
+                                type="button"
+                                onClick={handleVerifyOtp}
+                                disabled={otpVerifying}
+                                className="btn-neon-gold text-xs px-5 py-2.5 shrink-0"
+                              >
+                                {otpVerifying ? 'Checking...' : 'Verify OTP'}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {otpStatusMsg && (
+                          <div className="text-[11px] text-[#00FF88] font-sans pt-1">
+                            {otpStatusMsg}
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     <button
                       type="button"
@@ -502,12 +674,9 @@ export default function AccountPage() {
                         >
                           Default
                         </span>
-                        <h3 className="font-serif text-base text-white mb-1">{user?.full_name || 'Anushka Bandara'}</h3>
+                        <h3 className="font-serif text-base text-white mb-1">{user?.full_name || 'Your Name'}</h3>
                         <p className="text-xs text-[#E8E3D8]/70 leading-relaxed font-sans">
-                          42 Galle Face Court, Suite 7B<br />
-                          Colombo 03, Western Province<br />
-                          00300, Sri Lanka<br />
-                          Phone: {user?.phone || '+94 11 255 0199'}
+                          {user?.phone ? `Phone: ${user.phone}` : 'No address saved yet.'}
                         </p>
                       </div>
                     </div>

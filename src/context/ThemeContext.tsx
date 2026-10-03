@@ -12,26 +12,27 @@ interface ThemeContextType {
 }
 
 const ThemeContext = createContext<ThemeContextType>({
-  theme: 'dark',
+  theme: 'light',
   toggleTheme: () => {},
   setTheme: () => {},
 });
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [theme, setThemeState] = useState<Theme>('dark');
+  const [theme, setThemeState] = useState<Theme>('light');
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     try {
-      const stored = localStorage.getItem('ceylon_theme') as Theme;
+      const stored = localStorage.getItem('shopverse_theme') as Theme;
       if (stored === 'dark' || stored === 'light') {
         setThemeState(stored);
         applyTheme(stored);
       } else {
-        applyTheme('dark');
+        // Default to light
+        applyTheme('light');
       }
     } catch (_e) {
-      applyTheme('dark');
+      applyTheme('light');
     }
     setMounted(true);
   }, []);
@@ -55,7 +56,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setThemeState(newTheme);
     applyTheme(newTheme);
     try {
-      localStorage.setItem('ceylon_theme', newTheme);
+      localStorage.setItem('shopverse_theme', newTheme);
     } catch (_e) {}
   };
 

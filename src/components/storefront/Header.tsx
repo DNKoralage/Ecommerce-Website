@@ -2,87 +2,63 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search,
-  ShoppingBag,
+  ShoppingCart,
   User,
   Menu,
   X,
   ShieldAlert,
-  Volume2,
-  VolumeX,
-  Globe,
   Sun,
   Moon,
-  Calendar,
+  Globe,
 } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { useTheme } from '@/context/ThemeContext';
+import { useCurrency } from '@/context/CurrencyContext';
 import { useSiteCustomization } from '@/context/SiteCustomizationContext';
 import { sound } from '@/lib/sound';
 import SearchModal from './SearchModal';
-import SriLankaWidgets from './SriLankaWidgets';
 
 interface HeaderProps {
   siteName?: string;
+  logoUrl?: string | null;
   announcementText?: string | null;
   announcementActive?: boolean;
 }
 
 export default function Header({
   siteName = 'Ceylon Times',
+  logoUrl,
   announcementText,
   announcementActive = true,
 }: HeaderProps) {
   const { openCart, itemCount, setCartIconRef } = useCart();
   const { isAdmin } = useAuth();
-  const { language, setLanguage, t } = useLanguage();
+  const { language, setLanguage } = useLanguage();
   const { theme, toggleTheme } = useTheme();
+  const { toggleCurrency, isUSD } = useCurrency();
   const { customization } = useSiteCustomization();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [showAnnouncement, setShowAnnouncement] = useState(announcementActive);
-  const [isMuted, setIsMuted] = useState(false);
   const cartButtonRef = useRef<HTMLButtonElement>(null);
-
   const isLight = theme === 'light';
 
   useEffect(() => {
-    setIsMuted(sound.getMuted());
-  }, []);
-
-  const toggleSound = () => {
-    const next = sound.toggleMuted();
-    setIsMuted(next);
-    if (!next) {
-      sound.playClick();
-    }
-  };
-
-  const toggleLanguage = () => {
-    sound.playClick();
-    setLanguage(language === 'en' ? 'si' : 'en');
-  };
-
-  useEffect(() => {
-    if (cartButtonRef.current) {
-      setCartIconRef(cartButtonRef);
-    }
+    if (cartButtonRef.current) setCartIconRef(cartButtonRef);
   }, [setCartIconRef]);
 
   useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 20);
-    };
+    const handleScroll = () => setIsScrolled(window.scrollY > 20);
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Build nav links: use customization if available, fall back to hardcoded defaults
   const navLinks = (() => {
     if (customization?.nav_links && customization.nav_links.length > 0) {
       return customization.nav_links
@@ -91,361 +67,232 @@ export default function Header({
         .map((l) => ({ label: l.label, href: l.href }));
     }
     return [
-      { label: t('shopAll'), href: '/products' },
-      { label: t('jewellery'), href: '/products?category=jewellery' },
-      { label: t('textiles'), href: '/products?category=textiles' },
-      { label: t('sacredLiving'), href: '/products?category=sacred-living' },
-      { label: t('ayurveda'), href: '/products?category=ayurveda' },
-      { label: t('tea'), href: '/products?category=tea' },
-      { label: t('about'), href: '/about' },
+      { label: 'All Products', href: '/products' },
+      { label: 'Jewellery',    href: '/products?category=jewellery' },
+      { label: 'Textiles',     href: '/products?category=textiles' },
+      { label: 'Ayurveda',     href: '/products?category=ayurveda' },
+      { label: 'Tea',          href: '/products?category=tea' },
+      { label: 'About',        href: '/about' },
     ];
   })();
 
+  /* --- colour tokens that follow the theme --- */
+  const bg      = isLight ? 'rgba(255,255,255,0.97)' : 'rgba(15,23,42,0.97)';
+  const border  = isLight ? 'rgba(226,232,240,0.9)'  : 'rgba(51,65,85,0.8)';
+  const txtMain = isLight ? '#0F172A'                 : '#F1F5F9';
+  const txtMute = isLight ? '#64748B'                 : '#94A3B8';
+
+  /* --- Logo rendering helper --- */
+  const renderLogo = (size: 'sm' | 'md' = 'sm') => {
+    const h = size === 'sm' ? 32 : 36;
+    // Use theme-aware default logos if no custom logo is set
+    const src = logoUrl || (isLight ? '/logo-black.png' : '/logo-white.png');
+    return (
+      <Image
+        src={src}
+        alt={siteName || 'Ceylon Times'}
+        width={Math.round(h * (481 / 367))}
+        height={h}
+        className="object-contain flex-shrink-0"
+        style={{ height: h, width: 'auto', maxWidth: size === 'sm' ? 110 : 130 }}
+        unoptimized
+        priority
+      />
+    );
+  };
+
   return (
     <>
-      <header className="sticky top-0 z-40 w-full transition-all duration-300">
-        {/* Top Info Bar: Live Sri Lanka Widgets + Announcement + Theme & Language Switchers */}
+      {/* ─── Announcement Bar ─── */}
+      {announcementActive && announcementText && (
         <div
+          className="w-full py-2 px-4 text-center text-xs font-medium tracking-wide"
           style={{
-            background: isLight
-              ? 'linear-gradient(90deg, #FFFFFF 0%, #FAF8F5 50%, #FFFFFF 100%)'
-              : 'linear-gradient(90deg, #050814 0%, #0A1024 50%, #050814 100%)',
-            borderBottom: isLight
-              ? '1px solid rgba(212, 175, 55, 0.35)'
-              : '1px solid rgba(255, 215, 0, 0.22)',
-            boxShadow: isLight
-              ? '0 2px 8px rgba(0,0,0,0.03)'
-              : '0 2px 15px rgba(0,0,0,0.4)',
+            background: 'linear-gradient(90deg, #2563EB, #3B82F6)',
+            color: '#FFFFFF',
           }}
-          className="text-[11px] py-1.5 px-3 sm:px-6 relative flex flex-wrap items-center justify-between gap-2.5 z-20 transition-colors"
         >
-          {/* Left: Live Sri Lanka Date, Time & Animated Weather */}
-          <div className="flex items-center">
-            <SriLankaWidgets />
+          {announcementText}
+        </div>
+      )}
+
+      {/* ─── Main Header ─── */}
+      <header
+        className="sticky top-0 z-40 w-full transition-all duration-300"
+        style={{
+          background: bg,
+          borderBottom: `1px solid ${border}`,
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          boxShadow: isScrolled ? (isLight ? '0 4px 24px rgba(0,0,0,0.07)' : '0 4px 24px rgba(0,0,0,0.5)') : 'none',
+        }}
+      >
+        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10 flex items-center h-16 gap-3">
+
+          {/* Mobile Hamburger */}
+          <button
+            onClick={() => { sound.playClick(); setIsMobileMenuOpen(true); }}
+            className="lg:hidden p-2 rounded-lg transition-colors flex-shrink-0"
+            style={{ color: txtMain }}
+            aria-label="Open menu"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+
+          {/* Brand Logo */}
+          <Link href="/" onClick={() => sound.playClick()} className="flex items-center gap-2.5 flex-shrink-0">
+            {renderLogo('sm')}
+            <span
+              className="text-base sm:text-lg font-bold tracking-tight"
+              style={{ color: txtMain, fontFamily: 'var(--font-outfit)', whiteSpace: 'nowrap' }}
+            >
+              {siteName || 'Ceylon Times'}
+            </span>
+          </Link>
+
+          {/* Desktop Search Bar — flex-1 with min-width 0 to prevent overflow */}
+          <div className="hidden md:flex flex-1 min-w-0 mx-3 relative">
+            <Search
+              className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none"
+              style={{ color: '#94A3B8' }}
+            />
+            <button
+              onClick={() => { sound.playClick(); setIsSearchOpen(true); }}
+              className="w-full text-left pl-9 pr-4 py-2 text-sm rounded-xl border transition-all cursor-text"
+              style={{
+                background: isLight ? '#F8FAFC' : 'rgba(30,41,59,0.6)',
+                borderColor: isLight ? '#E2E8F0' : 'rgba(51,65,85,0.7)',
+                color: '#94A3B8',
+                fontFamily: 'var(--font-inter)',
+                minWidth: 0,
+              }}
+            >
+              Search products, categories…
+            </button>
           </div>
 
-          {/* Center: Curated Island Announcement (Desktop) */}
-          {showAnnouncement && (
-            <div
-              className="hidden xl:flex items-center gap-2 text-center text-[11px] font-medium tracking-[0.14em] uppercase"
-              style={{
-                color: isLight ? '#854D0E' : '#FFD700',
-              }}
-            >
-              <span className={isLight ? 'text-amber-600' : 'animate-pulse text-[#00FFFF]'}>✦</span>
-              <span style={{ textShadow: isLight ? 'none' : '0 0 10px rgba(255,215,0,0.4)' }}>
-                {announcementText || t('announcement')}
-              </span>
-              <span className={isLight ? 'text-amber-600' : 'animate-pulse text-[#00FFFF]'}>✦</span>
-            </div>
-          )}
+          {/* Desktop Nav */}
+          <nav className="hidden lg:flex items-center gap-0.5 flex-shrink-0">
+            {navLinks.map((link) => (
+              <Link
+                key={link.label}
+                href={link.href}
+                onClick={() => sound.playClick()}
+                className="px-3 py-2 text-[13px] font-medium rounded-lg transition-all duration-200"
+                style={{ color: txtMute, whiteSpace: 'nowrap' }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = '#2563EB'; (e.currentTarget as HTMLElement).style.background = isLight ? '#EFF6FF' : 'rgba(37,99,235,0.1)'; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = txtMute; (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+              >
+                {link.label}
+              </Link>
+            ))}
+          </nav>
 
-          {/* Right: Controls (Theme Toggle + Language Switcher + Sound Toggle) */}
-          <div className="flex items-center gap-2 sm:gap-2.5 ml-auto">
-            {/* Dark / Light Mode Toggle Switch */}
-            <motion.button
-              type="button"
-              whileHover={{ scale: 1.04 }}
-              whileTap={{ scale: 0.96 }}
+          {/* Right Actions */}
+          <div className="flex items-center gap-1.5 flex-shrink-0 ml-auto">
+            {/* Mobile Search */}
+            <button
+              onClick={() => { sound.playClick(); setIsSearchOpen(true); }}
+              className="md:hidden p-2 rounded-lg transition-all"
+              style={{ color: txtMute }}
+              aria-label="Search"
+            >
+              <Search className="w-5 h-5" />
+            </button>
+
+            {/* Admin — only show when logged in as admin */}
+            {isAdmin && (
+              <Link
+                href="/admin"
+                className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold"
+                style={{ background: 'rgba(239,68,68,0.08)', color: '#DC2626', border: '1px solid rgba(239,68,68,0.2)' }}
+              >
+                <ShieldAlert className="w-3.5 h-3.5" />
+                <span>Admin</span>
+              </Link>
+            )}
+
+            {/* Language */}
+            <button
+              onClick={() => { sound.playClick(); setLanguage(language === 'en' ? 'si' : 'en'); }}
+              className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all"
+              style={{ color: txtMute, border: `1px solid ${border}`, background: isLight ? '#F8FAFC' : 'rgba(30,41,59,0.5)' }}
+            >
+              <Globe className="w-3.5 h-3.5" />
+              <span>{language === 'si' ? 'සිං' : 'EN'}</span>
+            </button>
+
+            {/* Theme Toggle */}
+            <button
               onClick={toggleTheme}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded transition-all cursor-pointer"
-              style={{
-                background: isLight ? '#FFFFFF' : '#090E1D',
-                border: isLight
-                  ? '1px solid rgba(212, 175, 55, 0.5)'
-                  : '1px solid rgba(255, 215, 0, 0.35)',
-                color: isLight ? '#0F172A' : '#FFD700',
-                boxShadow: isLight ? '0 2px 6px rgba(0,0,0,0.04)' : '0 0 10px rgba(255,215,0,0.1)',
-              }}
+              className="p-2 rounded-lg transition-all"
+              style={{ color: txtMute, border: `1px solid ${border}`, background: isLight ? '#F8FAFC' : 'rgba(30,41,59,0.5)' }}
               title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-              aria-label="Toggle Dark or Light Mode"
+              aria-label="Toggle theme"
             >
               {theme === 'dark' ? (
-                <>
-                  <Sun className="w-3.5 h-3.5 text-[#FFD700] animate-[spin_16s_linear_infinite]" />
-                  <span className="text-[10px] text-yellow-300 font-mono font-bold">LIGHT</span>
-                </>
+                <Sun className="w-4 h-4 text-amber-400" />
               ) : (
-                <>
-                  <Moon className="w-3.5 h-3.5 text-indigo-600" />
-                  <span className="text-[10px] text-slate-800 font-mono font-bold">DARK</span>
-                </>
+                <Moon className="w-4 h-4 text-indigo-500" />
               )}
-            </motion.button>
+            </button>
 
-            {/* Language Switcher Toggle */}
+            {/* Currency */}
+            <button
+              onClick={() => { sound.playClick(); toggleCurrency(); }}
+              className="hidden sm:flex items-center px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all"
+              style={{ color: txtMute, border: `1px solid ${border}`, background: isLight ? '#F8FAFC' : 'rgba(30,41,59,0.5)', fontFamily: 'var(--font-inter)' }}
+            >
+              {isUSD ? '$' : 'Rs'}
+            </button>
+
+            {/* User */}
+            <Link
+              href="/account"
+              className="p-2 rounded-lg transition-all"
+              style={{ color: txtMute }}
+              aria-label="Account"
+            >
+              <User className="w-5 h-5 hover:text-[#2563EB] transition-colors" />
+            </Link>
+
+            {/* Cart Button */}
             <motion.button
-              type="button"
+              ref={cartButtonRef}
+              onClick={() => { sound.playClick(); openCart(); }}
               whileHover={{ scale: 1.04 }}
-              whileTap={{ scale: 0.96 }}
-              onClick={toggleLanguage}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-bold tracking-wider transition-all cursor-pointer"
+              whileTap={{ scale: 0.94 }}
+              className="relative p-2 rounded-xl transition-all"
               style={{
-                background: isLight ? '#FFFFFF' : '#090E1D',
-                border: isLight
-                  ? '1px solid rgba(212, 175, 55, 0.5)'
-                  : '1px solid rgba(255, 215, 0, 0.35)',
-                color: isLight ? '#0F172A' : '#FFD700',
-                boxShadow: isLight ? '0 2px 6px rgba(0,0,0,0.04)' : '0 0 10px rgba(255,215,0,0.1)',
+                background: itemCount > 0 ? '#2563EB' : (isLight ? '#F8FAFC' : 'rgba(30,41,59,0.5)'),
+                border: itemCount > 0 ? 'none' : `1px solid ${border}`,
+                color: itemCount > 0 ? '#FFFFFF' : txtMute,
+                boxShadow: itemCount > 0 ? '0 4px 14px rgba(37,99,235,0.4)' : 'none',
               }}
-              title="Toggle Sinhala / English"
+              aria-label="View cart"
             >
-              <Globe className={`w-3.5 h-3.5 ${isLight ? 'text-amber-600' : 'text-[#00FFFF]'}`} />
-              <span className={language === 'si' ? 'font-sinhala text-xs text-amber-600 font-bold' : isLight ? 'text-slate-900' : 'text-yellow-400'}>
-                {language === 'si' ? 'සිංහල' : 'ENGLISH'}
-              </span>
-              <span className={isLight ? 'text-slate-300 text-[9px]' : 'text-white/30 text-[9px]'}>/</span>
-              <span className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-white/60'}`}>
-                {language === 'si' ? 'EN' : 'සිං'}
-              </span>
-            </motion.button>
-
-            {/* Audio Feedback Toggle */}
-            <motion.button
-              type="button"
-              whileHover={{ scale: 1.08 }}
-              whileTap={{ scale: 0.92 }}
-              onClick={toggleSound}
-              className="p-1.5 rounded-full transition-all cursor-pointer"
-              style={{
-                background: isLight ? '#FFFFFF' : '#090E1D',
-                border: isLight
-                  ? '1px solid rgba(212, 175, 55, 0.4)'
-                  : '1px solid rgba(255, 215, 0, 0.25)',
-                boxShadow: isLight ? '0 2px 6px rgba(0,0,0,0.04)' : 'none',
-              }}
-              title={isMuted ? 'Enable UI Audio Feedback' : 'Mute UI Audio Feedback'}
-              aria-label="Toggle UI Audio"
-            >
-              {isMuted ? (
-                <VolumeX className="w-3.5 h-3.5 text-red-500" />
-              ) : (
-                <Volume2 className={`w-3.5 h-3.5 ${isLight ? 'text-amber-600' : 'text-[#00FFFF] animate-pulse'}`} />
+              <ShoppingCart className="w-5 h-5" />
+              {itemCount > 0 && (
+                <motion.span
+                  key={itemCount}
+                  initial={{ scale: 0.5, opacity: 0 }}
+                  animate={{ scale: [1, 1.3, 1], opacity: 1 }}
+                  transition={{ type: 'spring', stiffness: 500, damping: 20 }}
+                  className="absolute -top-1.5 -right-1.5 w-5 h-5 text-[10px] font-bold rounded-full flex items-center justify-center text-white"
+                  style={{ background: '#EF4444', boxShadow: '0 2px 6px rgba(239,68,68,0.5)' }}
+                >
+                  {itemCount}
+                </motion.span>
               )}
             </motion.button>
           </div>
         </div>
-
-        {/* Main Navigation Bar */}
-        <motion.div
-          animate={{
-            height: isScrolled ? 70 : 86,
-          }}
-          transition={{ duration: 0.3, ease: 'easeInOut' }}
-          style={{
-            background: isLight
-              ? isScrolled
-                ? 'rgba(255, 255, 255, 0.98)'
-                : 'rgba(255, 255, 255, 0.94)'
-              : isScrolled
-              ? 'rgba(10, 14, 26, 0.96)'
-              : 'rgba(10, 14, 26, 0.88)',
-            borderBottom: isLight
-              ? '1px solid rgba(212, 175, 55, 0.3)'
-              : '1px solid rgba(255, 215, 0, 0.2)',
-            backdropFilter: 'blur(20px)',
-            WebkitBackdropFilter: 'blur(20px)',
-            boxShadow: isLight
-              ? isScrolled
-                ? '0 6px 25px rgba(0,0,0,0.08)'
-                : '0 2px 10px rgba(0,0,0,0.04)'
-              : isScrolled
-              ? '0 10px 30px rgba(0,0,0,0.7), 0 0 25px rgba(255,215,0,0.06)'
-              : '0 4px 20px rgba(0,0,0,0.4)',
-          }}
-          className="flex items-center px-4 sm:px-6 lg:px-12 transition-colors relative"
-        >
-          <div className="max-w-[1440px] mx-auto w-full flex items-center justify-between">
-            {/* Mobile Hamburger */}
-            <button
-              onClick={() => {
-                sound.playClick();
-                setIsMobileMenuOpen(true);
-              }}
-              className="lg:hidden p-2 transition-colors"
-              style={{ color: isLight ? '#0F172A' : '#FFD700' }}
-              aria-label="Open menu"
-            >
-              <Menu className="w-5 h-5" />
-            </button>
-
-            {/* Official Primary Brand Logo & 'Ceylon Times' Title */}
-            <Link
-              href="/"
-              onClick={() => sound.playClick()}
-              className="flex items-center gap-2.5 sm:gap-3 group py-1"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={isLight ? '/logo-black.png' : '/logo-white.png'}
-                alt="Ceylon Times"
-                className="h-10 sm:h-12 md:h-13 w-auto object-contain transition-all duration-300 group-hover:scale-105"
-                style={{
-                  filter: isLight
-                    ? 'drop-shadow(0 2px 4px rgba(0,0,0,0.15))'
-                    : 'drop-shadow(0 2px 8px rgba(0,0,0,0.6)) drop-shadow(0 0 15px rgba(255,215,0,0.45))',
-                }}
-              />
-              <div className="flex flex-col">
-                <span
-                  className="text-base sm:text-lg md:text-xl font-bold tracking-[0.16em] uppercase transition-colors"
-                  style={{
-                    fontFamily: 'var(--font-cinzel)',
-                    color: isLight ? '#0F172A' : '#FFD700',
-                    textShadow: isLight ? 'none' : '0 0 12px rgba(255,215,0,0.35)',
-                  }}
-                >
-                  Ceylon Times
-                </span>
-                <span
-                  className="text-[9px] tracking-[0.22em] uppercase font-mono hidden sm:block"
-                  style={{
-                    color: isLight ? '#996515' : '#00FFFF',
-                  }}
-                >
-                  ceylon-times.lk
-                </span>
-              </div>
-            </Link>
-
-            {/* Desktop Navigation Links */}
-            <nav className="hidden lg:flex items-center gap-6 xl:gap-8">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.label}
-                  href={link.href}
-                  onClick={() => sound.playClick()}
-                  onMouseEnter={() => sound.playChime()}
-                  className="text-[12px] uppercase tracking-[0.14em] font-semibold transition-all duration-300 relative py-1 group"
-                  style={{
-                    color: isLight ? '#1E293B' : 'rgba(235, 230, 220, 0.85)',
-                  }}
-                >
-                  <span
-                    className="transition-colors duration-300"
-                    onMouseEnter={(e) => {
-                      (e.target as HTMLElement).style.color = isLight ? '#B8860B' : '#FFD700';
-                    }}
-                    onMouseLeave={(e) => {
-                      (e.target as HTMLElement).style.color = isLight ? '#1E293B' : 'rgba(235, 230, 220, 0.85)';
-                    }}
-                  >
-                    {link.label}
-                  </span>
-                  <span
-                    className="absolute bottom-0 left-0 h-[2px] w-0 group-hover:w-full transition-all duration-300"
-                    style={{
-                      background: isLight
-                        ? 'linear-gradient(90deg, #B8860B, #D4AF37)'
-                        : 'linear-gradient(90deg, #FFD700, #00FFFF)',
-                      boxShadow: isLight ? 'none' : '0 0 8px rgba(0,255,255,0.7)',
-                    }}
-                  />
-                </Link>
-              ))}
-            </nav>
-
-            {/* Right Action Icons */}
-            <div className="flex items-center gap-2.5 sm:gap-4">
-              {/* Atelier Booking Link */}
-              <Link
-                href="/booking"
-                onClick={() => sound.playClick()}
-                className="hidden lg:inline-flex items-center gap-1.5 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] transition-all duration-300"
-                style={{
-                  background: isLight ? '#FFFFFF' : 'rgba(255,255,255,0.04)',
-                  border: isLight ? '1px solid rgba(212, 175, 55, 0.4)' : '1px solid rgba(255,255,255,0.12)',
-                  color: isLight ? '#0F172A' : '#E8E6E1',
-                  fontFamily: 'var(--font-rajdhani)',
-                }}
-                title="Reserve Private Atelier Appointment"
-              >
-                <Calendar className="w-3.5 h-3.5 text-[#C9A96E]" />
-                <span>Book Atelier</span>
-              </Link>
-
-              {/* Admin Portal Link - Strictly for authenticated Admins only */}
-              {isAdmin && (
-                <Link
-                  href="/admin"
-                  onClick={() => sound.playClick()}
-                  className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.15em] transition-all duration-300"
-                  style={{
-                    background: isLight ? '#FFFFFF' : 'rgba(255,215,0,0.15)',
-                    border: isLight ? '1px solid rgba(212, 175, 55, 0.5)' : '1px solid rgba(255,215,0,0.5)',
-                    color: isLight ? '#996515' : '#FFD700',
-                    fontFamily: 'var(--font-rajdhani)',
-                  }}
-                  title="Ceylon Times Private Admin Workspace"
-                >
-                  <ShieldAlert className="w-3.5 h-3.5 text-amber-600" />
-                  <span>Admin</span>
-                </Link>
-              )}
-
-              {/* Search Trigger */}
-              <button
-                onClick={() => {
-                  sound.playClick();
-                  setIsSearchOpen(true);
-                }}
-                className="p-2 transition-colors cursor-pointer"
-                style={{ color: isLight ? '#0F172A' : '#E8E3D8' }}
-                aria-label="Search catalog"
-              >
-                <Search className="w-5 h-5 hover:text-amber-600 transition-colors" />
-              </button>
-
-              {/* User Account */}
-              <Link
-                href="/account"
-                onClick={() => sound.playClick()}
-                className="p-2 transition-colors cursor-pointer"
-                style={{ color: isLight ? '#0F172A' : '#E8E3D8' }}
-                aria-label="Your account"
-              >
-                <User className="w-5 h-5 hover:text-amber-600 transition-colors" />
-              </Link>
-
-              {/* Shopping Bag */}
-              <motion.button
-                ref={cartButtonRef}
-                onClick={() => {
-                  sound.playClick();
-                  openCart();
-                }}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.92 }}
-                className="p-2 transition-colors relative cursor-pointer"
-                style={{ color: isLight ? '#0F172A' : '#E8E3D8' }}
-                aria-label="View bag"
-              >
-                <ShoppingBag className="w-5 h-5 hover:text-amber-600 transition-colors" />
-                {itemCount > 0 && (
-                  <motion.span
-                    key={itemCount}
-                    initial={{ scale: 0.5, opacity: 0 }}
-                    animate={{ scale: [1, 1.25, 1], opacity: 1 }}
-                    transition={{ type: 'spring', stiffness: 500, damping: 20 }}
-                    className="absolute -top-0.5 -right-0.5 w-4.5 h-4.5 text-[10px] font-bold rounded-full flex items-center justify-center text-white"
-                    style={{
-                      background: 'linear-gradient(135deg, #B8860B, #D4AF37)',
-                      boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
-                    }}
-                  >
-                    {itemCount}
-                  </motion.span>
-                )}
-              </motion.button>
-            </div>
-          </div>
-        </motion.div>
       </header>
 
-      {/* Search Modal */}
+      {/* ─── Search Modal ─── */}
       <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
 
-      {/* Mobile Drawer */}
+      {/* ─── Mobile Drawer ─── */}
       <AnimatePresence>
         {isMobileMenuOpen && (
           <div className="fixed inset-0 z-50 lg:hidden">
@@ -454,158 +301,97 @@ export default function Header({
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsMobileMenuOpen(false)}
-              className="fixed inset-0 bg-black/70 backdrop-blur-sm"
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm"
             />
             <motion.div
               initial={{ x: '-100%' }}
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
-              transition={{ type: 'tween', duration: 0.3 }}
-              className="fixed inset-y-0 left-0 w-full max-w-xs p-6 shadow-2xl z-10 flex flex-col justify-between"
+              transition={{ type: 'tween', duration: 0.28 }}
+              className="fixed inset-y-0 left-0 w-full max-w-xs p-6 shadow-2xl z-10 flex flex-col"
               style={{
-                background: isLight ? '#FFFFFF' : '#070C1B',
-                color: isLight ? '#0F172A' : '#FFFFFF',
-                borderRight: isLight ? '1px solid rgba(212, 175, 55, 0.3)' : '1px solid rgba(255, 215, 0, 0.2)',
+                background: isLight ? '#FFFFFF' : '#0F172A',
+                color: isLight ? '#0F172A' : '#F1F5F9',
+                borderRight: `1px solid ${border}`,
               }}
             >
-              <div>
-                <div
-                  className="flex items-center justify-between pb-5"
-                  style={{ borderBottom: isLight ? '1px solid #E2E8F0' : '1px solid rgba(255,215,0,0.18)' }}
-                >
-                  <div className="flex items-center gap-2.5">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={isLight ? '/logo-black.png' : '/logo-white.png'}
-                      alt="Ceylon Times"
-                      className="h-9 w-auto object-contain"
-                    />
-                    <div className="flex flex-col">
-                      <span className="text-sm font-bold tracking-widest" style={{ fontFamily: 'var(--font-cinzel)', color: isLight ? '#0F172A' : '#FFD700' }}>
-                        Ceylon Times
-                      </span>
-                      <span className="text-[8px] font-mono tracking-widest" style={{ color: isLight ? '#996515' : '#00FFFF' }}>
-                        ceylon-times.lk
-                      </span>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => {
-                      sound.playClick();
-                      setIsMobileMenuOpen(false);
-                    }}
-                    className="p-2"
-                    style={{ color: isLight ? '#0F172A' : '#FFD700' }}
-                    aria-label="Close menu"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
+              {/* Drawer Header */}
+              <div className="flex items-center justify-between pb-5 border-b" style={{ borderColor: border }}>
+                <div className="flex items-center gap-2.5">
+                  {renderLogo('md')}
+                  <span className="text-base font-bold" style={{ fontFamily: 'var(--font-outfit)' }}>
+                    {siteName || 'Ceylon Times'}
+                  </span>
                 </div>
-
-                {/* Mobile Theme & Language Switchers */}
-                <div className="flex items-center justify-between py-3.5 border-b" style={{ borderColor: isLight ? '#E2E8F0' : 'rgba(255,215,0,0.15)' }}>
-                  <div className="flex items-center gap-2">
-                    {theme === 'dark' ? <Moon className="w-4 h-4 text-[#00FFFF]" /> : <Sun className="w-4 h-4 text-amber-500" />}
-                    <span className="text-xs" style={{ color: isLight ? '#475569' : 'rgba(255,255,255,0.7)' }}>Theme Mode:</span>
-                  </div>
-                  <button
-                    onClick={toggleTheme}
-                    className="px-3 py-1 rounded text-xs font-bold"
-                    style={{
-                      background: isLight ? '#F1F5F9' : '#090E1D',
-                      border: isLight ? '1px solid #CBD5E1' : '1px solid rgba(255,215,0,0.3)',
-                      color: isLight ? '#0F172A' : '#FFD700',
-                    }}
-                  >
-                    {theme === 'dark' ? 'Dark (Night)' : 'Light (Day)'}
-                  </button>
-                </div>
-
-                <div className="flex items-center justify-between py-3.5 border-b" style={{ borderColor: isLight ? '#E2E8F0' : 'rgba(255,215,0,0.15)' }}>
-                  <div className="flex items-center gap-2">
-                    <Globe className="w-4 h-4 text-amber-600" />
-                    <span className="text-xs" style={{ color: isLight ? '#475569' : 'rgba(255,255,255,0.7)' }}>Language:</span>
-                  </div>
-                  <button
-                    onClick={toggleLanguage}
-                    className="px-3 py-1 rounded text-xs font-bold"
-                    style={{
-                      background: isLight ? '#F1F5F9' : '#090E1D',
-                      border: isLight ? '1px solid #CBD5E1' : '1px solid rgba(255,215,0,0.3)',
-                      color: isLight ? '#0F172A' : '#FFD700',
-                    }}
-                  >
-                    {language === 'si' ? 'සිංහල (Sinhala)' : 'English (EN)'}
-                  </button>
-                </div>
-
-                <div className="flex flex-col gap-3 py-6">
-                  {navLinks.map((link, idx) => (
-                    <motion.div
-                      key={link.label}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: idx * 0.04 }}
-                    >
-                      <Link
-                        href={link.href}
-                        onClick={() => {
-                          sound.playClick();
-                          setIsMobileMenuOpen(false);
-                        }}
-                        className="text-sm font-semibold block py-1.5 transition-colors uppercase tracking-widest"
-                        style={{
-                          color: isLight ? '#1E293B' : 'rgba(235, 230, 220, 0.85)',
-                          letterSpacing: '0.12em',
-                        }}
-                      >
-                        {link.label}
-                      </Link>
-                    </motion.div>
-                  ))}
-                  <Link
-                    href="/booking"
-                    onClick={() => {
-                      sound.playClick();
-                      setIsMobileMenuOpen(false);
-                    }}
-                    className="mt-3 inline-flex items-center gap-2 text-xs uppercase tracking-widest pt-3 font-bold border-t"
-                    style={{
-                      borderColor: isLight ? '#E2E8F0' : 'rgba(255,255,255,0.1)',
-                      color: isLight ? '#0F172A' : '#E8E6E1',
-                    }}
-                  >
-                    <Calendar className="w-4 h-4 text-[#C9A96E]" />
-                    <span>Reserve Atelier Booking</span>
-                  </Link>
-                  {isAdmin && (
-                    <Link
-                      href="/admin"
-                      onClick={() => {
-                        sound.playClick();
-                        setIsMobileMenuOpen(false);
-                      }}
-                      className="mt-2 inline-flex items-center gap-2 text-xs uppercase tracking-widest pt-2 font-bold"
-                      style={{
-                        color: isLight ? '#996515' : '#FFD700',
-                      }}
-                    >
-                      <ShieldAlert className="w-4 h-4 text-amber-600" />
-                      <span>Admin Control Center</span>
-                    </Link>
-                  )}
-                </div>
+                <button onClick={() => { sound.playClick(); setIsMobileMenuOpen(false); }} className="p-2 rounded-lg" style={{ color: txtMute }}>
+                  <X className="w-5 h-5" />
+                </button>
               </div>
 
-              <div
-                className="pt-5 space-y-1.5 border-t text-[11px]"
-                style={{
-                  borderColor: isLight ? '#E2E8F0' : 'rgba(255,215,0,0.15)',
-                  color: isLight ? '#64748B' : 'rgba(235,230,220,0.45)',
-                }}
-              >
-                <p>Authentic Sri Lankan Living Heritage</p>
-                <p>© {new Date().getFullYear()} Ceylon Times · ceylon-times.lk</p>
+              {/* Theme + Currency toggles */}
+              <div className="flex items-center gap-2 py-4 border-b" style={{ borderColor: border }}>
+                <button
+                  onClick={toggleTheme}
+                  className="flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-sm font-medium transition-all"
+                  style={{ background: isLight ? '#EFF6FF' : 'rgba(37,99,235,0.12)', color: '#2563EB', border: '1px solid rgba(37,99,235,0.2)' }}
+                >
+                  {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                  {theme === 'dark' ? 'Light' : 'Dark'} Mode
+                </button>
+                <button
+                  onClick={() => { sound.playClick(); toggleCurrency(); }}
+                  className="flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-sm font-medium transition-all"
+                  style={{ background: isLight ? '#F8FAFC' : 'rgba(30,41,59,0.5)', color: txtMute, border: `1px solid ${border}` }}
+                >
+                  {isUSD ? 'Switch to LKR' : 'Switch to USD'}
+                </button>
+              </div>
+
+              {/* Nav Links */}
+              <nav className="flex flex-col gap-1 py-4 flex-1 overflow-y-auto">
+                {navLinks.map((link, idx) => (
+                  <motion.div
+                    key={link.label}
+                    initial={{ opacity: 0, x: -16 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: idx * 0.04 }}
+                  >
+                    <Link
+                      href={link.href}
+                      onClick={() => { sound.playClick(); setIsMobileMenuOpen(false); }}
+                      className="block px-4 py-2.5 text-sm font-medium rounded-xl transition-all"
+                      style={{ color: isLight ? '#334155' : '#CBD5E1' }}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = isLight ? '#EFF6FF' : 'rgba(37,99,235,0.1)'; (e.currentTarget as HTMLElement).style.color = '#2563EB'; }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = isLight ? '#334155' : '#CBD5E1'; }}
+                    >
+                      {link.label}
+                    </Link>
+                  </motion.div>
+                ))}
+              </nav>
+
+              {/* Bottom: Admin link (only if admin) + Account */}
+              <div className="space-y-2 pt-4 border-t" style={{ borderColor: border }}>
+                <Link
+                  href="/account"
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all"
+                  style={{ background: isLight ? '#F8FAFC' : 'rgba(30,41,59,0.5)', color: txtMute, border: `1px solid ${border}` }}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <User className="w-4 h-4" />
+                  My Account
+                </Link>
+                {isAdmin && (
+                  <Link
+                    href="/admin"
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all"
+                    style={{ background: 'rgba(239,68,68,0.08)', color: '#DC2626', border: '1px solid rgba(239,68,68,0.2)' }}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    <ShieldAlert className="w-4 h-4" />
+                    Admin Dashboard
+                  </Link>
+                )}
               </div>
             </motion.div>
           </div>

@@ -187,9 +187,9 @@ export default function AdminSettingsPage() {
               </div>
               <div style={{ marginTop: 20, display: 'grid', gap: 12 }}>
                 {[
-                  { name: 'Standard Delivery', price: '₹199', days: '5–7 business days' },
-                  { name: 'Express Delivery', price: '₹499', days: '2–3 business days' },
-                  { name: 'Next Day Courier', price: '₹999', days: '1 business day' },
+                  { name: 'Standard Delivery', price: 'Rs. 199', days: '5–7 business days' },
+                  { name: 'Express Delivery', price: 'Rs. 499', days: '2–3 business days' },
+                  { name: 'Next Day Courier', price: 'Rs. 999', days: '1 business day' },
                 ].map(s => (
                   <div key={s.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 10, padding: '14px 18px' }}>
                     <div>

@@ -10,7 +10,7 @@ import { api } from '@/lib/store';
 import { Product, Category } from '@/types';
 
 function formatCurrency(n: number) {
-  return '₹' + n.toLocaleString('en-IN');
+  return 'Rs. ' + n.toLocaleString('en-LK');
 }
 
 interface ProductFormProps {
@@ -122,11 +122,11 @@ function ProductForm({ product, categories, onClose, onSave }: ProductFormProps)
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14 }}>
             <div>
-              <label style={labelStyle}>Price (₹) *</label>
+              <label style={labelStyle}>Price (Rs.) *</label>
               <input type="number" value={form.price} onChange={e => handleChange('price', e.target.value)} style={inputStyle} placeholder="0" />
             </div>
             <div>
-              <label style={labelStyle}>Sale Price (₹)</label>
+              <label style={labelStyle}>Sale Price (Rs.)</label>
               <input type="number" value={form.sale_price} onChange={e => handleChange('sale_price', e.target.value)} style={inputStyle} placeholder="Optional" />
             </div>
             <div>

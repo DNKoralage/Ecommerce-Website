@@ -28,7 +28,7 @@ export default function ShippingPage() {
           <div className="space-y-6 text-xs text-primary leading-relaxed font-sans">
             <div>
               <h3 className="font-serif text-base text-primary font-medium mb-1">Domestic Expedited Transit</h3>
-              <p className="text-primary-muted">Complimentary on orders above ₹2,500. Standard 2-4 business day transit via BlueDart Apex priority courier with signature release verification.</p>
+              <p className="text-primary-muted">Complimentary on orders above Rs. 2,500. Standard 2-4 business day transit via BlueDart Apex priority courier with signature release verification.</p>
             </div>
             <div>
               <h3 className="font-serif text-base text-primary font-medium mb-1">International Air Express</h3>

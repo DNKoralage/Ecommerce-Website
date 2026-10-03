@@ -5,25 +5,24 @@ import { AuthProvider } from '@/context/AuthContext';
 import { ToastProvider } from '@/context/ToastContext';
 import { LanguageProvider } from '@/context/LanguageContext';
 import { ThemeProvider } from '@/context/ThemeContext';
+import { CurrencyProvider } from '@/context/CurrencyContext';
 import { SiteCustomizationProvider } from '@/context/SiteCustomizationContext';
 import CartDrawer from '@/components/storefront/CartDrawer';
-import FlyingCartOverlay from '@/components/storefront/FlyingCartOverlay';
-import CustomCursor from '@/components/ui/CustomCursor';
-import ScrollVideoBackground from '@/components/storefront/ScrollVideoBackground';
+import FloatingCartBar from '@/components/storefront/FloatingCartBar';
+import AppShell from '@/components/storefront/AppShell';
 
 export const metadata: Metadata = {
-  title: 'Ceylon Times | Sovereign Sri Lankan Living Heritage & Cyberpunk Atelier (ceylon-times.lk)',
+  title: 'Ceylon Times | Multi-Vendor Marketplace — Premium Products & Artisan Crafts',
   description:
-    'Ceylon Times (ceylon-times.lk) — Authentic Sri Lankan living heritage and craftsmanship. Certified Ceylon sapphires, royal Kandyan handlooms, sacred temple brass arts, and single-estate Nuwara Eliya tea reserves.',
+    'Ceylon Times — Discover thousands of curated products from verified vendors across Sri Lanka. Cash on delivery, fast shipping, and trusted sellers.',
   icons: {
-    icon: '/favicon.png',
-    shortcut: '/favicon.png',
+    icon: '/favicon.ico',
+    shortcut: '/favicon.ico',
     apple: '/favicon.png',
   },
   openGraph: {
-    title: 'Ceylon Times | Authentic Sri Lankan Living Heritage (ceylon-times.lk)',
-    description:
-      'Curated collection of certified Ceylon sapphires, Kandyan silk handlooms, and sacred temple living artifacts.',
+    title: 'Ceylon Times | Multi-Vendor Marketplace',
+    description: 'Shop from hundreds of verified Sri Lankan vendors. COD available. Wide selection of artisan crafts, jewellery, textiles, and more.',
     url: 'https://ceylontimes.lk',
     siteName: 'Ceylon Times',
     locale: 'en_LK',
@@ -37,28 +36,28 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="scroll-smooth dark">
-      <head>
-        <link rel="icon" href="/favicon.png" type="image/png" />
-      </head>
-      <body className="antialiased min-h-screen relative selection:bg-[#FFD700]/30 selection:text-[#FFD700]">
+    <html lang="en" className="scroll-smooth">
+      <head />
+      <body className="antialiased min-h-screen">
         <ThemeProvider>
           <LanguageProvider>
-            <AuthProvider>
-              <CartProvider>
-                <ToastProvider>
-                  <SiteCustomizationProvider>
-                    <ScrollVideoBackground />
-                    <div className="relative z-10 flex flex-col min-h-screen">
-                      {children}
-                    </div>
-                    <CartDrawer />
-                    <FlyingCartOverlay />
-                    <CustomCursor />
-                  </SiteCustomizationProvider>
-                </ToastProvider>
-              </CartProvider>
-            </AuthProvider>
+            <CurrencyProvider>
+              <AuthProvider>
+                <CartProvider>
+                  <ToastProvider>
+                    <SiteCustomizationProvider>
+                      <AppShell>
+                        <div className="relative flex flex-col min-h-screen">
+                          {children}
+                        </div>
+                        <CartDrawer />
+                        <FloatingCartBar />
+                      </AppShell>
+                    </SiteCustomizationProvider>
+                  </ToastProvider>
+                </CartProvider>
+              </AuthProvider>
+            </CurrencyProvider>
           </LanguageProvider>
         </ThemeProvider>
       </body>

@@ -1,9 +1,27 @@
 export function formatPrice(
   amount: number,
-  symbol: string = 'Rs. '
+  symbol?: string
 ): string {
-  if (typeof amount !== 'number' || isNaN(amount)) return `${symbol}0`;
-  return `${symbol}${amount.toLocaleString('en-LK')}`;
+  if (typeof amount !== 'number' || isNaN(amount)) {
+    return symbol ? `${symbol}0` : 'Rs. 0';
+  }
+
+  // Check if international patron preferred USD in client storage
+  if (typeof window !== 'undefined') {
+    try {
+      const pref = localStorage.getItem('ceylon_currency_pref');
+      if (pref === 'USD') {
+        const usd = amount / 300;
+        return `$${usd.toLocaleString('en-US', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })}`;
+      }
+    } catch {}
+  }
+
+  const prefix = symbol !== undefined ? symbol : 'Rs. ';
+  return `${prefix}${amount.toLocaleString('en-LK')}`;
 }
 
 export function slugify(text: string): string {

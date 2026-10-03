@@ -1,74 +1,182 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   ShieldCheck,
   CheckCircle2,
   Lock,
-  CreditCard,
   ArrowRight,
   ChevronRight,
-  Gem,
   Truck,
-  Sparkles,
+  Phone,
+  Mail,
+  KeyRound,
+  MessageCircle,
+  AlertCircle,
+  FileCheck2,
+  Info,
+  Calendar,
+  Banknote,
+  Store,
 } from 'lucide-react';
 import Header from '@/components/storefront/Header';
 import Footer from '@/components/storefront/Footer';
 import { useCart } from '@/context/CartContext';
+import { useAuth } from '@/context/AuthContext';
+import { useCurrency } from '@/context/CurrencyContext';
 import { api } from '@/lib/store';
-import { formatPrice } from '@/lib/utils';
 import { defaultSiteSettings } from '@/lib/seed-data';
 import { useToast } from '@/context/ToastContext';
+import { sendOtp, verifyOtp } from '@/lib/otp';
+import { getWhatsAppActionUrl, buildWhatsAppMessage } from '@/lib/notifications';
+import { sound } from '@/lib/sound';
 
 export default function CheckoutPage() {
   const { items, subtotal, discountAmount, total, clearCart } = useCart();
   const { success, error: toastError } = useToast();
+  const { user } = useAuth();
+  const { formatPrice } = useCurrency();
 
-  const [step, setStep] = useState<'shipping' | 'payment' | 'confirmed'>('shipping');
+  const [step, setStep] = useState<'shipping' | 'review' | 'confirmed'>('shipping');
   const [shippingMethod, setShippingMethod] = useState<'standard' | 'express'>('standard');
+  const [orderMethod] = useState<'cod' | 'booking'>('cod');
   const [isProcessing, setIsProcessing] = useState(false);
   const [confirmedOrderId, setConfirmedOrderId] = useState<string | null>(null);
+  const [confirmedBookingId, setConfirmedBookingId] = useState<string | null>(null);
+  const [whatsAppUrl, setWhatsAppUrl] = useState<string | null>(null);
 
-  // Form states - Authentic Sri Lankan identity
+  // Form states — prefilled from authenticated user if available
   const [formData, setFormData] = useState({
-    name: 'Anushka Bandara',
-    email: 'patron@ceylontimes.lk',
-    phone: '+94 77 123 4567',
-    address1: '42 Galle Face Court, Colombo 03',
-    address2: 'Apartment 7B',
-    city: 'Colombo',
-    state: 'Western Province',
-    zip: '00300',
+    name: '',
+    email: '',
+    phone: '',
+    address1: '',
+    address2: '',
+    city: '',
+    state: '',
+    zip: '',
     country: 'Sri Lanka',
   });
 
+  const [specialNotes, setSpecialNotes] = useState('');
+
+  // OTP Verification States
+  const [otpCode, setOtpCode] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpSending, setOtpSending] = useState(false);
+  const [otpVerifying, setOtpVerifying] = useState(false);
+  const [otpMessage, setOtpMessage] = useState('');
+  const [demoCodeNotice, setDemoCodeNotice] = useState<string | null>(null);
+  const [isAccountVerified, setIsAccountVerified] = useState(false);
+
+  // Pre-fill from logged-in user on mount
+  useEffect(() => {
+    if (user) {
+      setFormData((prev) => ({
+        ...prev,
+        name: user.full_name || '',
+        email: user.email || '',
+        phone: user.phone || '',
+      }));
+      if (user.is_verified || user.role === 'admin') {
+        setIsAccountVerified(true);
+      }
+    }
+  }, [user]);
+
+  // Listen to global user verified event
+  useEffect(() => {
+    const handleGlobalVerified = () => {
+      setIsAccountVerified(true);
+    };
+    window.addEventListener('ceylon_user_verified', handleGlobalVerified);
+    return () => window.removeEventListener('ceylon_user_verified', handleGlobalVerified);
+  }, []);
+
   const freeThreshold = 7500;
   const shippingCost = shippingMethod === 'express' ? 750 : subtotal >= freeThreshold ? 0 : 350;
-  const grandTotal = total + shippingCost;
+  const grandTotal = total + (orderMethod === 'booking' ? 0 : shippingCost);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
-  const handlePlaceOrder = async (e: React.FormEvent) => {
+  const handleSendOtp = async (channel: 'phone' | 'email') => {
+    const target = channel === 'phone' ? formData.phone.trim() : formData.email.trim();
+    if (!target) {
+      toastError(`Please enter a valid ${channel === 'phone' ? 'phone number' : 'email address'} first.`);
+      return;
+    }
+    setOtpSending(true);
+    setOtpMessage('');
+    try {
+      const res = await sendOtp(target, channel);
+      if (res.success) {
+        setOtpSent(true);
+        setDemoCodeNotice(res.otp);
+        success(res.message);
+      } else {
+        toastError(res.message);
+      }
+    } catch {
+      toastError('Failed to dispatch verification code.');
+    } finally {
+      setOtpSending(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    const target = formData.phone.trim() || formData.email.trim();
+    if (!otpCode.trim()) {
+      toastError('Please enter the 6-digit OTP code.');
+      return;
+    }
+    setOtpVerifying(true);
+    try {
+      const res = verifyOtp(target, otpCode.trim());
+      if (res.success) {
+        setIsAccountVerified(true);
+        setOtpMessage('Verification confirmed!');
+        success('Contact verified! You can now place your order.');
+      } else {
+        toastError(res.message);
+      }
+    } catch {
+      toastError('Verification check failed.');
+    } finally {
+      setOtpVerifying(false);
+    }
+  };
+
+  const handleSubmitOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (items.length === 0) {
-      toastError('Your archival bag is currently empty');
+      toastError('Your cart is currently empty.');
+      return;
+    }
+
+    if (!formData.name.trim() || !formData.email.trim() || !formData.phone.trim() || !formData.address1.trim()) {
+      toastError('Please complete your name, contact phone, and delivery address.');
+      return;
+    }
+
+    if (!isAccountVerified) {
+      toastError('Please verify your phone or email with an OTP code before completing checkout.');
       return;
     }
 
     setIsProcessing(true);
     try {
-      // Simulate quick secure gateway handoff
-      await new Promise((resolve) => setTimeout(resolve, 1200));
+      const itemsDesc = items.map((i) => `${i.title} (x${i.quantity})`).join(', ');
 
+      // 1. Create order record with 'unpaid' status (Cash on Delivery / Booking)
       const order = await api.createOrder({
-        user_id: `usr_${Date.now()}`,
+        user_id: user?.id || `usr_${Date.now()}`,
         email: formData.email,
         shipping_address: {
           id: `addr_${Date.now()}`,
-          user_id: 'guest',
+          user_id: user?.id || 'guest',
           full_name: formData.name,
           phone: formData.phone,
           address_line1: formData.address1,
@@ -82,7 +190,7 @@ export default function CheckoutPage() {
         },
         billing_address: {
           id: `addr_b_${Date.now()}`,
-          user_id: 'guest',
+          user_id: user?.id || 'guest',
           full_name: formData.name,
           phone: formData.phone,
           address_line1: formData.address1,
@@ -93,310 +201,349 @@ export default function CheckoutPage() {
           is_default: false,
           created_at: new Date().toISOString(),
         },
-        shipping_method: shippingMethod === 'express' ? 'Island Express Courier' : 'Island Standard Registered Post',
-        shipping_cost: shippingCost,
+        shipping_method:
+          orderMethod === 'booking'
+            ? 'In-Store Pickup Reservation'
+            : shippingMethod === 'express'
+            ? 'Island Express Courier (24-48h)'
+            : 'Island Standard Registered Post (3-5 days)',
+        shipping_cost: orderMethod === 'booking' ? 0 : shippingCost,
         subtotal,
         discount_amount: discountAmount,
         tax_amount: Math.round(subtotal * 0.12),
         total: grandTotal,
         coupon_code: null,
-        payment_status: 'paid',
-        fulfillment_status: 'processing',
+        payment_status: 'unpaid', // Cash on Delivery or Booking
+        fulfillment_status: 'pending',
         tracking_number: `LK-${Math.floor(100000 + Math.random() * 900000)}`,
-        tracking_carrier: 'Ceylon Times Priority Courier',
-        notes: 'Handle with extreme care. Hand-sealed Sri Lankan heirloom packaging.',
+        tracking_carrier: 'Island Priority Courier',
+        notes: `Order Method: ${orderMethod === 'cod' ? 'Cash on Delivery (COD)' : 'Booking / Reservation'}. Notes: ${specialNotes || 'Standard'}. Items: ${itemsDesc}`,
       });
 
+      // 2. Create the corresponding BookingRequest record
+      const booking = await api.createBookingRequest({
+        user_id: user?.id || `usr_${Date.now()}`,
+        user_name: formData.name,
+        user_email: formData.email,
+        user_phone: formData.phone,
+        service_type: orderMethod === 'cod' ? 'cash_on_delivery' : 'store_booking',
+        service_title: `${orderMethod === 'cod' ? 'Cash on Delivery Order' : 'Store Booking Reservation'} (${items.length} items)`,
+        preferred_date: new Date(Date.now() + 86400000 * 2).toISOString().split('T')[0],
+        preferred_time: 'Standard Delivery Window (09:00 - 18:00)',
+        guests_count: 1,
+        special_requirements: specialNotes || `Delivery: ${shippingMethod === 'express' ? 'Priority Express' : 'Standard Delivery'}. Items: ${itemsDesc}`,
+        order_id: order.id,
+        items_summary: itemsDesc,
+        total_amount: grandTotal,
+      });
+
+      // 3. Build WhatsApp action link for instant direct alert
+      const waMsg = buildWhatsAppMessage({
+        bookingId: booking.id,
+        orderNumber: order.order_number,
+        customerName: formData.name,
+        customerEmail: formData.email,
+        customerPhone: formData.phone,
+        serviceTitle: `${orderMethod === 'cod' ? 'COD Order' : 'Booking Reservation'} (${items.length} items)`,
+        totalAmount: grandTotal,
+        shippingAddress: `${formData.address1}, ${formData.city}, ${formData.state}`,
+        specialRequirements: specialNotes || undefined,
+        timestamp: new Date().toISOString(),
+      });
+      const waUrl = getWhatsAppActionUrl('+94771234567', waMsg);
+
       setConfirmedOrderId(order.order_number);
+      setConfirmedBookingId(booking.id);
+      setWhatsAppUrl(waUrl);
       setStep('confirmed');
       clearCart();
-      success('Order confirmed. Your Ceylon archival edition is being prepared.');
+      sound.playSuccess();
+      // Fire browser push notification
+      if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+        try {
+          new Notification('✅ Order Confirmed — Ceylon Times', {
+            body: `Order #${order.order_number} placed successfully. We'll contact you shortly for COD delivery.`,
+            icon: '/favicon.ico',
+          });
+        } catch (_e) {}
+      }
+      success('Order confirmed! We will contact you to arrange your COD delivery.');
     } catch (_err) {
-      toastError('Failed to process payment. Please verify transaction details.');
+      toastError('Failed to place order. Please check details and try again.');
     } finally {
       setIsProcessing(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#02030A] text-[#E8E3D8] selection:bg-[#FFD700]/30 selection:text-[#FFD700]">
+    <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100">
       <Header
         siteName={defaultSiteSettings.site_name}
         announcementText={defaultSiteSettings.announcement_bar_text}
       />
 
-      <main className="flex-1 max-w-[1440px] mx-auto w-full px-6 lg:px-16 py-12 relative">
-        {/* Subtle ambient neon glow */}
-        <div className="absolute top-1/3 right-1/4 w-96 h-96 bg-[radial-gradient(circle,rgba(0,255,255,0.04)_0%,transparent_70%)] pointer-events-none -z-10" />
-
+      <main className="flex-1 max-w-6xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
         {/* Breadcrumb */}
-        <nav className="flex items-center gap-2 text-xs text-[#E8E3D8]/60 uppercase tracking-[0.18em] mb-8" style={{ fontFamily: 'var(--font-rajdhani)' }}>
-          <Link href="/" className="hover:text-[#FFD700] transition-colors">
+        <nav className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mb-6 font-medium">
+          <Link href="/" className="hover:text-blue-600 transition-colors">
             Home
           </Link>
-          <ChevronRight className="w-3.5 h-3.5 opacity-40 text-[#FFD700]" />
-          <Link href="/cart" className="hover:text-[#FFD700] transition-colors">
-            Bag
+          <ChevronRight className="w-3.5 h-3.5 opacity-60" />
+          <Link href="/cart" className="hover:text-blue-600 transition-colors">
+            Cart
           </Link>
-          <ChevronRight className="w-3.5 h-3.5 opacity-40 text-[#FFD700]" />
-          <span className="text-[#FFD700] font-bold">Checkout Ledger</span>
+          <ChevronRight className="w-3.5 h-3.5 opacity-60" />
+          <span className="text-gray-900 dark:text-white font-semibold">Checkout</span>
         </nav>
 
         {step === 'confirmed' ? (
           /* Confirmation Screen */
-          <div
-            className="p-12 lg:p-16 max-w-2xl mx-auto text-center my-8"
-            style={{
-              background: 'rgba(8, 12, 28, 0.9)',
-              border: '1px solid rgba(255, 215, 0, 0.35)',
-              boxShadow: '0 0 50px rgba(0, 0, 0, 0.9), 0 0 30px rgba(255, 215, 0, 0.15)',
-              backdropFilter: 'blur(20px)',
-              clipPath: 'polygon(0 0, calc(100% - 15px) 0, 100% 15px, 100% 100%, 15px 100%, 0 calc(100% - 15px))',
-            }}
-          >
-            <div
-              className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6"
-              style={{
-                background: 'rgba(0, 255, 136, 0.12)',
-                border: '1px solid rgba(0, 255, 136, 0.4)',
-                boxShadow: '0 0 20px rgba(0, 255, 136, 0.3)',
-              }}
-            >
-              <CheckCircle2 className="w-8 h-8 text-[#00FF88]" />
+          <div className="p-8 sm:p-12 max-w-2xl mx-auto text-center my-6 bg-white dark:bg-gray-900 rounded-3xl border border-gray-200 dark:border-gray-800 shadow-sm">
+            <div className="w-16 h-16 rounded-full bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto mb-4 border border-emerald-200 dark:border-emerald-800">
+              <CheckCircle2 className="w-8 h-8" />
             </div>
-            <span className="text-[11px] font-bold uppercase tracking-[0.25em] text-[#FFD700] block mb-2" style={{ fontFamily: 'var(--font-rajdhani)' }}>
-              Ceylon Acquisition Secured
-            </span>
-            <h1 className="font-serif text-3xl text-white font-normal mb-3">
-              Order {confirmedOrderId}
+
+            <span className="badge badge-green mb-3">Order Confirmed</span>
+
+            <h1 className="font-heading text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-2">
+              Thank You For Your Order!
             </h1>
-            <p className="text-xs text-[#E8E3D8]/70 leading-relaxed font-sans max-w-md mx-auto mb-6">
-              Your Sri Lankan handcrafted archival pieces have been reserved. A confirmation receipt and courier manifest tracking notice have been dispatched to <span className="font-bold text-[#FFD700]">{formData.email}</span>.
+            <p className="text-sm text-blue-600 dark:text-blue-400 font-mono font-semibold mb-3">
+              Order #{confirmedOrderId || confirmedBookingId}
             </p>
 
-            <div
-              className="p-5 text-xs text-left max-w-sm mx-auto mb-8 space-y-2 font-sans"
-              style={{
-                background: 'rgba(4, 6, 16, 0.8)',
-                border: '1px solid rgba(255, 215, 0, 0.2)',
-              }}
-            >
-              <div className="flex justify-between">
-                <span className="text-[#E8E3D8]/50">Destination:</span>
-                <span className="text-white font-bold">{formData.city}, {formData.state}</span>
+            <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed max-w-md mx-auto mb-6">
+              Your order has been recorded successfully. Our customer support will contact you via WhatsApp / phone to verify and prepare your dispatch.
+            </p>
+
+            {/* Confirmation Box */}
+            <div className="p-4 rounded-2xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs text-left max-w-md mx-auto mb-6 space-y-2.5">
+              <div className="flex items-center justify-between pb-2 border-b border-gray-200 dark:border-gray-700 font-semibold text-gray-900 dark:text-white">
+                <span className="flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                  Order Information
+                </span>
+                <span className="text-emerald-600 dark:text-emerald-400">Payment on Delivery</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-[#E8E3D8]/50">Courier:</span>
-                <span className="text-[#00FFFF] font-bold">{shippingMethod === 'express' ? 'Island Express (24-48h)' : 'Island Standard'}</span>
+                <span className="text-gray-500">Method:</span>
+                <span className="font-semibold text-gray-800 dark:text-gray-200">
+                  {orderMethod === 'cod' ? 'Cash on Delivery (COD)' : 'Booking Reservation'}
+                </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-[#E8E3D8]/50">Total Settled:</span>
-                <span className="text-[#FFD700] font-bold">{formatPrice(grandTotal)}</span>
+                <span className="text-gray-500">Delivery To:</span>
+                <span className="font-semibold text-gray-800 dark:text-gray-200">{formData.name}</span>
               </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Contact:</span>
+                <span className="font-semibold text-gray-800 dark:text-gray-200">{formData.phone}</span>
+              </div>
+              <div className="flex justify-between pt-1 border-t border-gray-200 dark:border-gray-700 text-sm font-bold text-gray-900 dark:text-white">
+                <span>Amount Due:</span>
+                <span className="text-blue-600 dark:text-blue-400">{formatPrice(grandTotal)}</span>
+              </div>
+
+              {whatsAppUrl && (
+                <div className="pt-2">
+                  <a
+                    href={whatsAppUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 transition-colors shadow-sm"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    <span>Track / Message Us on WhatsApp</span>
+                  </a>
+                </div>
+              )}
             </div>
 
-            <Link href="/products" className="btn-neon-gold text-xs inline-flex">
-              <span>Continue Exploring Ceylon Treasury</span>
-              <ArrowRight className="w-4 h-4 ml-1" />
-            </Link>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+              <Link href="/products" className="btn-primary w-full sm:w-auto">
+                <span>Continue Shopping</span>
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+              <Link href="/account" className="btn-outline w-full sm:w-auto">
+                <span>View Order Status</span>
+              </Link>
+            </div>
           </div>
         ) : (
           /* Two Column Checkout Form */
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             {/* Left Column: Form Details (7 Cols) */}
-            <div className="lg:col-span-7 space-y-8">
+            <div className="lg:col-span-7 space-y-6">
               {/* Stepper Header */}
-              <div className="flex items-center gap-4 text-xs font-bold uppercase tracking-[0.2em] border-b border-yellow-500/15 pb-4" style={{ fontFamily: 'var(--font-rajdhani)' }}>
+              <div className="flex items-center gap-3 text-xs font-semibold pb-4 border-b border-gray-200 dark:border-gray-800">
                 <button
                   type="button"
                   onClick={() => setStep('shipping')}
-                  className={`flex items-center gap-2 cursor-pointer ${
-                    step === 'shipping' ? 'text-[#FFD700]' : 'text-[#E8E3D8]/50'
+                  className={`flex items-center gap-2 ${
+                    step === 'shipping' ? 'text-blue-600 font-bold' : 'text-gray-400'
                   }`}
                 >
                   <span
-                    className="w-5 h-5 rounded-full flex items-center justify-center text-[10px]"
-                    style={{
-                      background: step === 'shipping' ? '#FFD700' : 'rgba(255,215,0,0.1)',
-                      color: step === 'shipping' ? '#02030A' : '#E8E3D8',
-                    }}
+                    className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                      step === 'shipping'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'
+                    }`}
                   >
                     1
                   </span>
-                  <span>Consignee &amp; Island Address</span>
+                  <span>Shipping &amp; Contact</span>
                 </button>
-                <ChevronRight className="w-3.5 h-3.5 opacity-30 text-[#FFD700]" />
+                <ChevronRight className="w-3.5 h-3.5 text-gray-300 dark:text-gray-700" />
                 <button
                   type="button"
-                  onClick={() => setStep('payment')}
-                  className={`flex items-center gap-2 cursor-pointer ${
-                    step === 'payment' ? 'text-[#00FFFF]' : 'text-[#E8E3D8]/50'
+                  onClick={() => {
+                    if (formData.name && formData.email && formData.phone && formData.address1) {
+                      setStep('review');
+                    }
+                  }}
+                  className={`flex items-center gap-2 ${
+                    step === 'review' ? 'text-blue-600 font-bold' : 'text-gray-400'
                   }`}
                 >
                   <span
-                    className="w-5 h-5 rounded-full flex items-center justify-center text-[10px]"
-                    style={{
-                      background: step === 'payment' ? '#00FFFF' : 'rgba(0,255,255,0.1)',
-                      color: step === 'payment' ? '#02030A' : '#E8E3D8',
-                    }}
+                    className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                      step === 'review'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'
+                    }`}
                   >
                     2
                   </span>
-                  <span>Secure Settlement</span>
+                  <span>Order Method &amp; Verification</span>
                 </button>
               </div>
 
               {step === 'shipping' ? (
-                <div
-                  className="p-8 space-y-6"
-                  style={{
-                    background: 'rgba(8, 12, 28, 0.85)',
-                    border: '1px solid rgba(255, 215, 0, 0.25)',
-                    boxShadow: '0 0 30px rgba(0, 0, 0, 0.7)',
-                  }}
-                >
-                  <h2 className="font-serif text-2xl text-white font-medium">
-                    Consignee Coordinates
-                  </h2>
+                /* Step 1: Shipping & Delivery Information */
+                <div className="p-6 sm:p-7 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm space-y-5">
+                  <div>
+                    <h2 className="font-heading text-xl font-bold text-gray-900 dark:text-white">
+                      Delivery &amp; Contact Information
+                    </h2>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      Enter your address and phone number for delivery dispatch.
+                    </p>
+                  </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-sans">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                     <div className="sm:col-span-2">
-                      <label className="block text-[11px] font-bold uppercase tracking-[0.18em] text-[#FFD700] mb-1.5" style={{ fontFamily: 'var(--font-rajdhani)' }}>
-                        Full Name
+                      <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+                        Full Name *
                       </label>
                       <input
                         type="text"
                         name="name"
                         required
+                        placeholder="e.g. John Silva"
                         value={formData.name}
                         onChange={handleInputChange}
-                        className="w-full p-3 text-[#E8E3D8] focus:outline-none"
-                        style={{
-                          background: 'rgba(4, 6, 16, 0.8)',
-                          border: '1px solid rgba(255, 215, 0, 0.25)',
-                        }}
+                        className="input-field w-full text-sm"
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold uppercase tracking-[0.18em] text-[#00FFFF] mb-1.5" style={{ fontFamily: 'var(--font-rajdhani)' }}>
-                        Email Address
+                      <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+                        Email Address *
                       </label>
                       <input
                         type="email"
                         name="email"
                         required
+                        placeholder="e.g. john@example.com"
                         value={formData.email}
                         onChange={handleInputChange}
-                        className="w-full p-3 text-[#E8E3D8] focus:outline-none"
-                        style={{
-                          background: 'rgba(4, 6, 16, 0.8)',
-                          border: '1px solid rgba(255, 215, 0, 0.25)',
-                        }}
+                        className="input-field w-full text-sm"
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold uppercase tracking-[0.18em] text-[#00FFFF] mb-1.5" style={{ fontFamily: 'var(--font-rajdhani)' }}>
-                        Contact Phone (Sri Lanka)
+                      <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+                        Contact Phone *
                       </label>
                       <input
                         type="tel"
                         name="phone"
                         required
+                        placeholder="e.g. +94 77 123 4567"
                         value={formData.phone}
                         onChange={handleInputChange}
-                        className="w-full p-3 text-[#E8E3D8] focus:outline-none"
-                        style={{
-                          background: 'rgba(4, 6, 16, 0.8)',
-                          border: '1px solid rgba(255, 215, 0, 0.25)',
-                        }}
+                        className="input-field w-full text-sm"
                       />
                     </div>
                     <div className="sm:col-span-2">
-                      <label className="block text-[11px] font-bold uppercase tracking-[0.18em] text-[#FFD700] mb-1.5" style={{ fontFamily: 'var(--font-rajdhani)' }}>
-                        Street Address
+                      <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+                        Street Address *
                       </label>
                       <input
                         type="text"
                         name="address1"
                         required
+                        placeholder="e.g. 42 Main Street, Colombo 03"
                         value={formData.address1}
                         onChange={handleInputChange}
-                        className="w-full p-3 text-[#E8E3D8] focus:outline-none"
-                        style={{
-                          background: 'rgba(4, 6, 16, 0.8)',
-                          border: '1px solid rgba(255, 215, 0, 0.25)',
-                        }}
+                        className="input-field w-full text-sm"
                       />
                     </div>
                     <div className="sm:col-span-2">
-                      <label className="block text-[11px] font-bold uppercase tracking-[0.18em] text-[#E8E3D8]/60 mb-1.5" style={{ fontFamily: 'var(--font-rajdhani)' }}>
-                        Apartment / Suite / Landmark (Optional)
+                      <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+                        Apartment, Landmark, etc. (Optional)
                       </label>
                       <input
                         type="text"
                         name="address2"
+                        placeholder="e.g. Apartment 4B / Near Galle Face Court"
                         value={formData.address2}
                         onChange={handleInputChange}
-                        className="w-full p-3 text-[#E8E3D8] focus:outline-none"
-                        style={{
-                          background: 'rgba(4, 6, 16, 0.8)',
-                          border: '1px solid rgba(255, 215, 0, 0.25)',
-                        }}
+                        className="input-field w-full text-sm"
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold uppercase tracking-[0.18em] text-[#00FFFF] mb-1.5" style={{ fontFamily: 'var(--font-rajdhani)' }}>
-                        City
+                      <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+                        City *
                       </label>
                       <input
                         type="text"
                         name="city"
                         required
+                        placeholder="e.g. Colombo / Kandy / Galle"
                         value={formData.city}
                         onChange={handleInputChange}
-                        className="w-full p-3 text-[#E8E3D8] focus:outline-none"
-                        style={{
-                          background: 'rgba(4, 6, 16, 0.8)',
-                          border: '1px solid rgba(255, 215, 0, 0.25)',
-                        }}
+                        className="input-field w-full text-sm"
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold uppercase tracking-[0.18em] text-[#00FFFF] mb-1.5" style={{ fontFamily: 'var(--font-rajdhani)' }}>
-                        Province
+                      <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+                        State / Province *
                       </label>
                       <input
                         type="text"
                         name="state"
                         required
+                        placeholder="e.g. Western Province"
                         value={formData.state}
                         onChange={handleInputChange}
-                        className="w-full p-3 text-[#E8E3D8] focus:outline-none"
-                        style={{
-                          background: 'rgba(4, 6, 16, 0.8)',
-                          border: '1px solid rgba(255, 215, 0, 0.25)',
-                        }}
+                        className="input-field w-full text-sm"
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold uppercase tracking-[0.18em] text-[#FFD700] mb-1.5" style={{ fontFamily: 'var(--font-rajdhani)' }}>
+                      <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
                         Postal Code
                       </label>
                       <input
                         type="text"
                         name="zip"
-                        required
+                        placeholder="e.g. 00300"
                         value={formData.zip}
                         onChange={handleInputChange}
-                        className="w-full p-3 text-[#E8E3D8] focus:outline-none"
-                        style={{
-                          background: 'rgba(4, 6, 16, 0.8)',
-                          border: '1px solid rgba(255, 215, 0, 0.25)',
-                        }}
+                        className="input-field w-full text-sm"
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold uppercase tracking-[0.18em] text-[#FFD700] mb-1.5" style={{ fontFamily: 'var(--font-rajdhani)' }}>
+                      <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
                         Country
                       </label>
                       <input
@@ -404,27 +551,22 @@ export default function CheckoutPage() {
                         name="country"
                         disabled
                         value="Sri Lanka"
-                        className="w-full p-3 text-[#FFD700] font-bold"
-                        style={{
-                          background: 'rgba(255, 215, 0, 0.05)',
-                          border: '1px solid rgba(255, 215, 0, 0.3)',
-                          fontFamily: 'var(--font-rajdhani)',
-                        }}
+                        className="input-field w-full text-sm bg-gray-100 dark:bg-gray-800 text-gray-500 font-semibold"
                       />
                     </div>
                   </div>
 
-                  {/* Delivery Options */}
-                  <div className="pt-6 border-t border-yellow-500/15 space-y-3">
-                    <h3 className="text-xs font-bold uppercase tracking-[0.18em] text-[#00FFFF]" style={{ fontFamily: 'var(--font-rajdhani)' }}>
-                      Ceylon Delivery Method
+                  {/* Delivery Speed Preference */}
+                  <div className="pt-4 border-t border-gray-100 dark:border-gray-800 space-y-3">
+                    <h3 className="text-xs font-semibold text-gray-900 dark:text-white uppercase tracking-wider">
+                      Delivery Option
                     </h3>
-                    <div className="space-y-2 text-xs font-sans">
+                    <div className="space-y-2 text-xs">
                       <label
-                        className={`flex items-center justify-between p-4 cursor-pointer transition-all ${
+                        className={`flex items-center justify-between p-3.5 rounded-xl cursor-pointer transition-all border ${
                           shippingMethod === 'standard'
-                            ? 'border border-[#FFD700] bg-yellow-500/10'
-                            : 'border border-yellow-500/20 bg-black/40'
+                            ? 'border-blue-600 bg-blue-50/50 dark:bg-blue-950/20'
+                            : 'border-gray-200 dark:border-gray-800 hover:border-gray-300'
                         }`}
                       >
                         <div className="flex items-center gap-3">
@@ -432,27 +574,31 @@ export default function CheckoutPage() {
                             type="radio"
                             checked={shippingMethod === 'standard'}
                             onChange={() => setShippingMethod('standard')}
-                            className="text-[#FFD700] accent-[#FFD700]"
+                            className="text-blue-600 accent-blue-600"
                           />
                           <div>
-                            <span className="font-bold text-white block">
-                              Island Standard Registered Courier
+                            <span className="font-semibold text-gray-900 dark:text-white block">
+                              Standard Courier Delivery
                             </span>
-                            <span className="text-[#E8E3D8]/60 text-[11px]">
-                              3–5 Business Days island-wide via Kapruka / Registered Post
+                            <span className="text-gray-500 text-[11px]">
+                              3–5 business days island-wide
                             </span>
                           </div>
                         </div>
-                        <span className="font-bold text-[#FFD700]" style={{ fontFamily: 'var(--font-rajdhani)' }}>
-                          {subtotal >= freeThreshold ? 'Complimentary' : formatPrice(350)}
+                        <span className="font-bold text-gray-900 dark:text-white">
+                          {subtotal >= freeThreshold ? (
+                            <span className="text-emerald-600">Free</span>
+                          ) : (
+                            formatPrice(350)
+                          )}
                         </span>
                       </label>
 
                       <label
-                        className={`flex items-center justify-between p-4 cursor-pointer transition-all ${
+                        className={`flex items-center justify-between p-3.5 rounded-xl cursor-pointer transition-all border ${
                           shippingMethod === 'express'
-                            ? 'border border-[#00FFFF] bg-cyan-500/10'
-                            : 'border border-yellow-500/20 bg-black/40'
+                            ? 'border-blue-600 bg-blue-50/50 dark:bg-blue-950/20'
+                            : 'border-gray-200 dark:border-gray-800 hover:border-gray-300'
                         }`}
                       >
                         <div className="flex items-center gap-3">
@@ -460,126 +606,214 @@ export default function CheckoutPage() {
                             type="radio"
                             checked={shippingMethod === 'express'}
                             onChange={() => setShippingMethod('express')}
-                            className="text-[#00FFFF] accent-[#00FFFF]"
+                            className="text-blue-600 accent-blue-600"
                           />
                           <div>
-                            <span className="font-bold text-white block">
-                              Priority Island Courier Express (DHL / Kapruka VIP)
+                            <span className="font-semibold text-gray-900 dark:text-white block">
+                              Priority Express Delivery
                             </span>
-                            <span className="text-[#E8E3D8]/60 text-[11px]">
-                              24–48h priority door-to-door transit with verification
+                            <span className="text-gray-500 text-[11px]">
+                              24–48h priority door-to-door delivery
                             </span>
                           </div>
                         </div>
-                        <span className="font-bold text-[#00FFFF]" style={{ fontFamily: 'var(--font-rajdhani)' }}>{formatPrice(750)}</span>
+                        <span className="font-bold text-gray-900 dark:text-white">
+                          {formatPrice(750)}
+                        </span>
                       </label>
                     </div>
                   </div>
 
                   <button
                     type="button"
-                    onClick={() => setStep('payment')}
-                    className="w-full btn-neon-gold py-4 text-xs flex items-center justify-center gap-2"
+                    onClick={() => {
+                      if (!formData.name.trim() || !formData.email.trim() || !formData.phone.trim() || !formData.address1.trim()) {
+                        toastError('Please fill in your name, contact phone, email, and address first.');
+                        return;
+                      }
+                      setStep('review');
+                    }}
+                    className="w-full btn-primary py-3.5 text-sm flex items-center justify-center gap-2 rounded-xl"
                   >
-                    <span>Proceed to Secure Settlement</span>
+                    <span>Continue to Order Method</span>
                     <ArrowRight className="w-4 h-4" />
                   </button>
                 </div>
               ) : (
-                /* Payment Step */
-                <div
-                  className="p-8 space-y-6"
-                  style={{
-                    background: 'rgba(8, 12, 28, 0.85)',
-                    border: '1px solid rgba(255, 215, 0, 0.25)',
-                    boxShadow: '0 0 30px rgba(0, 0, 0, 0.7)',
-                  }}
-                >
-                  <h2 className="font-serif text-2xl text-white font-medium">
-                    Sri Lanka Secure Settlement
-                  </h2>
+                /* Step 2: Order Method & OTP Verification */
+                <div className="p-6 sm:p-7 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm space-y-6">
+                  <div>
+                    <h2 className="font-heading text-xl font-bold text-gray-900 dark:text-white">
+                      Select Order Method
+                    </h2>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      Choose Cash on Delivery (COD) or a booking reservation. No payment gateway needed.
+                    </p>
+                  </div>
 
+                  {/* COD Only — no booking option */}
+                  <div className="p-4 rounded-2xl border border-blue-600 bg-blue-50/40 dark:bg-blue-950/20 ring-2 ring-blue-600/20">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-950 flex items-center justify-center text-blue-600">
+                        <Banknote className="w-4 h-4" />
+                      </div>
+                      <span className="font-bold text-sm text-gray-900 dark:text-white">Cash on Delivery (COD)</span>
+                      <span className="ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-600 text-white">Selected</span>
+                    </div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                      Pay with cash upon delivery to your doorstep. Our courier will contact you before arrival. Completely safe and risk-free.
+                    </p>
+                    <div className="mt-2 flex items-center gap-2 text-xs text-emerald-600 font-semibold">
+                      <ShieldCheck className="w-3.5 h-3.5" />
+                      No upfront payment required
+                    </div>
+                  </div>
+
+                  {/* Special Notes / Instructions */}
+                  <div className="space-y-1.5 text-xs">
+                    <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">
+                      Order Notes or Special Instructions (Optional)
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={specialNotes}
+                      onChange={(e) => setSpecialNotes(e.target.value)}
+                      placeholder="e.g. Please call before arriving, deliver after 2 PM..."
+                      className="input-field w-full text-xs resize-none"
+                    />
+                  </div>
+
+                  {/* OTP Account Verification Gate */}
                   <div
-                    className="p-4 text-xs flex items-center gap-3"
-                    style={{
-                      background: 'rgba(0, 255, 136, 0.08)',
-                      border: '1px solid rgba(0, 255, 136, 0.3)',
-                      color: '#00FF88',
-                    }}
+                    className={`p-4 sm:p-5 rounded-2xl border space-y-3 ${
+                      isAccountVerified
+                        ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800'
+                        : 'bg-blue-50/50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800'
+                    }`}
                   >
-                    <ShieldCheck className="w-5 h-5 shrink-0" />
-                    <span>
-                      256-bit encrypted test transaction via Sri Lanka Central Bank approved gateway (PayHere / Card).
-                    </span>
-                  </div>
-
-                  <div className="space-y-4 text-xs font-sans">
-                    <div>
-                      <label className="block text-[11px] font-bold uppercase tracking-[0.18em] text-[#FFD700] mb-1.5" style={{ fontFamily: 'var(--font-rajdhani)' }}>
-                        Card Number
-                      </label>
-                      <div className="relative">
-                        <input
-                          type="text"
-                          defaultValue="•••• •••• •••• 4242"
-                          className="w-full p-3 text-white pr-10 focus:outline-none font-mono"
-                          style={{
-                            background: 'rgba(4, 6, 16, 0.8)',
-                            border: '1px solid rgba(255, 215, 0, 0.25)',
-                          }}
-                        />
-                        <CreditCard className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-[#FFD700]" />
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <KeyRound className={`w-4 h-4 ${isAccountVerified ? 'text-emerald-600' : 'text-blue-600'}`} />
+                        <span className="text-xs font-bold text-gray-900 dark:text-white">
+                          Contact Verification
+                        </span>
                       </div>
+                      <span
+                        className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full ${
+                          isAccountVerified
+                            ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300'
+                            : 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300'
+                        }`}
+                      >
+                        {isAccountVerified ? 'Verified ✓' : 'Verification Required'}
+                      </span>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-[11px] font-bold uppercase tracking-[0.18em] text-[#00FFFF] mb-1.5" style={{ fontFamily: 'var(--font-rajdhani)' }}>
-                          Expiration Date
-                        </label>
-                        <input
-                          type="text"
-                          defaultValue="12 / 28"
-                          className="w-full p-3 text-white focus:outline-none font-mono"
-                          style={{
-                            background: 'rgba(4, 6, 16, 0.8)',
-                            border: '1px solid rgba(0, 255, 255, 0.25)',
-                          }}
-                        />
+                    {isAccountVerified ? (
+                      <div className="flex items-center gap-2 text-xs text-emerald-700 dark:text-emerald-400 font-medium">
+                        <CheckCircle2 className="w-4 h-4 shrink-0" />
+                        <span>Contact verified! You can proceed to submit your order.</span>
                       </div>
-                      <div>
-                        <label className="block text-[11px] font-bold uppercase tracking-[0.18em] text-[#00FFFF] mb-1.5" style={{ fontFamily: 'var(--font-rajdhani)' }}>
-                          Security CVV
-                        </label>
-                        <input
-                          type="password"
-                          defaultValue="•••"
-                          className="w-full p-3 text-white focus:outline-none font-mono"
-                          style={{
-                            background: 'rgba(4, 6, 16, 0.8)',
-                            border: '1px solid rgba(0, 255, 255, 0.25)',
-                          }}
-                        />
+                    ) : (
+                      <div className="space-y-3 text-xs">
+                        <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
+                          To protect against fraudulent orders, please verify your phone or email with a quick OTP code.
+                        </p>
+
+                        {!otpSent ? (
+                          <div className="flex flex-wrap gap-2 pt-1">
+                            <button
+                              type="button"
+                              onClick={() => handleSendOtp('phone')}
+                              disabled={otpSending}
+                              className="btn-outline text-xs py-2 px-3 flex items-center gap-1.5 rounded-xl"
+                            >
+                              <Phone className="w-3.5 h-3.5 text-blue-600" />
+                              <span>{otpSending ? 'Sending...' : `Send OTP to Phone (${formData.phone || 'Phone'})`}</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleSendOtp('email')}
+                              disabled={otpSending}
+                              className="btn-outline text-xs py-2 px-3 flex items-center gap-1.5 rounded-xl"
+                            >
+                              <Mail className="w-3.5 h-3.5 text-blue-600" />
+                              <span>{otpSending ? 'Sending...' : `Send OTP to Email (${formData.email || 'Email'})`}</span>
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="space-y-3 pt-1">
+                            {demoCodeNotice && (
+                              <div className="p-3 rounded-xl bg-blue-100/70 dark:bg-blue-900/30 text-xs flex items-center justify-between text-blue-800 dark:text-blue-300">
+                                <span>Demo OTP: <strong className="font-mono text-sm">{demoCodeNotice}</strong></span>
+                                <button
+                                  type="button"
+                                  onClick={() => setOtpCode(demoCodeNotice)}
+                                  className="text-xs font-bold underline hover:text-blue-900"
+                                >
+                                  Auto-Fill
+                                </button>
+                              </div>
+                            )}
+
+                            <div className="flex gap-2">
+                              <input
+                                type="text"
+                                maxLength={6}
+                                placeholder="Enter 6-digit OTP"
+                                value={otpCode}
+                                onChange={(e) => setOtpCode(e.target.value)}
+                                className="input-field flex-1 text-center font-mono text-base tracking-widest"
+                              />
+                              <button
+                                type="button"
+                                onClick={handleVerifyOtp}
+                                disabled={otpVerifying}
+                                className="btn-primary text-xs px-4 py-2 shrink-0 rounded-xl"
+                              >
+                                {otpVerifying ? 'Checking...' : 'Verify'}
+                              </button>
+                            </div>
+
+                            <div className="flex justify-between items-center text-[11px] text-gray-500">
+                              <span>Didn&apos;t receive code?</span>
+                              <button
+                                type="button"
+                                onClick={() => handleSendOtp('phone')}
+                                className="text-blue-600 hover:underline font-semibold"
+                              >
+                                Resend Code
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    </div>
+                    )}
                   </div>
 
-                  <div className="flex gap-4 pt-4 border-t border-yellow-500/15">
+                  {/* Actions */}
+                  <div className="flex gap-3 pt-3 border-t border-gray-100 dark:border-gray-800">
                     <button
                       type="button"
                       onClick={() => setStep('shipping')}
-                      className="btn-neon-outline text-xs px-6 py-4"
+                      className="btn-outline text-xs px-5 py-3 rounded-xl"
                     >
                       Back
                     </button>
                     <button
                       type="button"
-                      onClick={handlePlaceOrder}
-                      disabled={isProcessing}
-                      className="flex-1 btn-neon-gold py-4 text-xs flex items-center justify-center gap-2 disabled:opacity-50"
+                      onClick={handleSubmitOrder}
+                      disabled={isProcessing || !isAccountVerified}
+                      className="flex-1 btn-primary py-3.5 text-sm flex items-center justify-center gap-2 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <Lock className="w-3.5 h-3.5" />
-                      <span>{isProcessing ? 'Securing Transaction...' : `Finalize Order — ${formatPrice(grandTotal)}`}</span>
+                      <FileCheck2 className="w-4 h-4" />
+                      <span>
+                        {isProcessing
+                          ? 'Placing Order...'
+                          : !isAccountVerified
+                          ? 'Verify OTP to Place Order'
+                          : `Confirm ${orderMethod === 'cod' ? 'Cash on Delivery' : 'Booking'} — ${formatPrice(grandTotal)}`}
+                      </span>
                     </button>
                   </div>
                 </div>
@@ -587,97 +821,78 @@ export default function CheckoutPage() {
             </div>
 
             {/* Right Column: Order Ledger Breakdown (5 Cols) */}
-            <div
-              className="lg:col-span-5 p-8 space-y-6"
-              style={{
-                background: 'rgba(8, 12, 28, 0.85)',
-                border: '1px solid rgba(255, 215, 0, 0.25)',
-                boxShadow: '0 0 35px rgba(0, 0, 0, 0.8)',
-              }}
-            >
-              <div className="flex items-center justify-between pb-4 border-b border-yellow-500/15">
-                <h3 className="font-serif text-xl text-white font-medium">
-                  Reserved Artifacts
+            <div className="lg:col-span-5 p-6 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm space-y-5">
+              <div className="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-gray-800">
+                <h3 className="font-heading text-lg font-bold text-gray-900 dark:text-white">
+                  Order Summary
                 </h3>
-                <span className="text-xs text-[#E8E3D8]/50" style={{ fontFamily: 'var(--font-rajdhani)' }}>
-                  {items.length} {items.length === 1 ? 'Creation' : 'Creations'}
+                <span className="text-xs text-gray-500 font-semibold">
+                  {items.length} {items.length === 1 ? 'Item' : 'Items'}
                 </span>
               </div>
 
               {/* Items List */}
-              <div className="divide-y divide-yellow-500/10 max-h-72 overflow-y-auto no-scrollbar">
+              <div className="divide-y divide-gray-100 dark:divide-gray-800 max-h-64 overflow-y-auto no-scrollbar">
                 {items.map((item) => (
-                  <div key={item.id} className="py-3 flex items-center gap-4 text-xs font-sans">
-                    <div
-                      className="w-12 h-14 overflow-hidden shrink-0"
-                      style={{
-                        background: '#04060E',
-                        border: '1px solid rgba(255, 215, 0, 0.2)',
-                      }}
-                    >
+                  <div key={item.id} className="py-3 flex items-center gap-3 text-xs">
+                    <div className="w-12 h-12 rounded-lg overflow-hidden shrink-0 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
-                        src={item.image}
+                        src={item.image || '/placeholder.png'}
                         alt={item.title}
                         className="w-full h-full object-cover"
                       />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-bold text-white truncate">{item.title}</p>
-                      <p className="text-[11px] text-[#00FFFF]/70" style={{ fontFamily: 'var(--font-rajdhani)' }}>Qty: {item.quantity}</p>
+                      <p className="font-semibold text-gray-900 dark:text-white truncate">{item.title}</p>
+                      <p className="text-[11px] text-gray-500">Qty: {item.quantity}</p>
                     </div>
-                    <div className="text-right font-bold text-[#FFD700]" style={{ fontFamily: 'var(--font-rajdhani)' }}>
+                    <div className="text-right font-bold text-gray-900 dark:text-white">
                       {formatPrice(item.price * item.quantity)}
                     </div>
                   </div>
                 ))}
               </div>
 
-              {/* Totals in LKR */}
-              <div className="space-y-2.5 text-xs text-[#E8E3D8]/70 pt-4 border-t border-yellow-500/15" style={{ fontFamily: 'var(--font-rajdhani)' }}>
+              {/* Totals */}
+              <div className="space-y-2.5 text-xs text-gray-600 dark:text-gray-300 pt-3 border-t border-gray-100 dark:border-gray-800">
                 <div className="flex justify-between">
                   <span>Subtotal</span>
-                  <span className="text-white font-bold">{formatPrice(subtotal)}</span>
+                  <span className="font-semibold text-gray-900 dark:text-white">{formatPrice(subtotal)}</span>
                 </div>
                 {discountAmount > 0 && (
-                  <div className="flex justify-between text-[#00FF88]">
-                    <span>Privilege Benefit</span>
+                  <div className="flex justify-between text-emerald-600">
+                    <span>Discount</span>
                     <span>-{formatPrice(discountAmount)}</span>
                   </div>
                 )}
                 <div className="flex justify-between">
-                  <span>Island Courier &amp; Transit Insurance</span>
-                  <span className="text-white">
-                    {shippingCost === 0 ? (
-                      <span className="text-[#00FF88] font-bold">Complimentary</span>
+                  <span>Delivery</span>
+                  <span>
+                    {orderMethod === 'booking' || shippingCost === 0 ? (
+                      <span className="text-emerald-600 font-semibold">Free</span>
                     ) : (
                       formatPrice(shippingCost)
                     )}
                   </span>
                 </div>
-                <div className="flex justify-between text-base font-bold text-white pt-3 border-t border-yellow-500/15">
-                  <span className="text-[#FFD700]">Settlement Due (LKR)</span>
-                  <span
-                    className="font-serif text-2xl text-[#FFD700]"
-                    style={{ textShadow: '0 0 10px rgba(255,215,0,0.5)' }}
-                  >
+                <div className="flex justify-between items-baseline text-sm font-bold text-gray-900 dark:text-white pt-2 border-t border-gray-100 dark:border-gray-800">
+                  <span>Total Due</span>
+                  <span className="text-xl text-blue-600 dark:text-blue-400">
                     {formatPrice(grandTotal)}
                   </span>
                 </div>
               </div>
 
-              <div
-                className="p-3.5 text-[11px] text-[#E8E3D8]/60 space-y-1 font-sans"
-                style={{
-                  background: 'rgba(4, 6, 16, 0.7)',
-                  border: '1px solid rgba(255, 215, 0, 0.15)',
-                }}
-              >
-                <div className="font-bold text-[#FFD700] flex items-center gap-1.5" style={{ fontFamily: 'var(--font-rajdhani)' }}>
-                  <ShieldCheck className="w-3.5 h-3.5 text-[#00FF88]" />
-                  Ceylon Times Provenance Seal
+              {/* Trust Badge Card */}
+              <div className="p-3.5 rounded-xl bg-blue-50/50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/50 text-xs text-gray-600 dark:text-gray-400 space-y-1.5">
+                <div className="font-semibold text-blue-700 dark:text-blue-300 flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-emerald-500" />
+                  No Card Required • Cash on Delivery
                 </div>
-                <div>All pieces are dispatched with tracking numbers and tamper-evident archival wax stamps from Colombo 03.</div>
+                <p className="text-[11px] leading-relaxed">
+                  You only pay once you inspect your items upon delivery. Our support team will confirm your order details via phone/WhatsApp.
+                </p>
               </div>
             </div>
           </div>

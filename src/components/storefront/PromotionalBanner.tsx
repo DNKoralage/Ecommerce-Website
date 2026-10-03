@@ -2,180 +2,144 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowRight, Sparkles, Gem } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { ArrowRight, Tag, Clock, Zap, Gift } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 import { useTheme } from '@/context/ThemeContext';
 import { sound } from '@/lib/sound';
 
 export default function PromotionalBanner() {
-  const { language, t } = useLanguage();
+  const { language } = useLanguage();
   const { theme } = useTheme();
   const isLight = theme === 'light';
 
-  const [timeLeft, setTimeLeft] = useState({
-    days: 4,
-    hours: 18,
-    minutes: 36,
-    seconds: 45,
-  });
+  const [timeLeft, setTimeLeft] = useState({ days: 4, hours: 18, minutes: 36, seconds: 45 });
 
   useEffect(() => {
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev.seconds > 0) return { ...prev, seconds: prev.seconds - 1 };
-        if (prev.minutes > 0) return { ...prev, minutes: 59, seconds: 59 };
-        if (prev.hours > 0) return { ...prev, hours: prev.hours - 1, minutes: 59, seconds: 59 };
-        if (prev.days > 0) return { ...prev, days: prev.days - 1, hours: 23, minutes: 59, seconds: 59 };
+        if (prev.minutes > 0) return { ...prev, minutes: prev.minutes - 1, seconds: 59 };
+        if (prev.hours > 0)   return { ...prev, hours: prev.hours - 1, minutes: 59, seconds: 59 };
+        if (prev.days > 0)    return { ...prev, days: prev.days - 1, hours: 23, minutes: 59, seconds: 59 };
         return prev;
       });
     }, 1000);
     return () => clearInterval(timer);
   }, []);
 
+  /* Multiple banner slides */
+  const banners = [
+    {
+      id: 'sale',
+      tag: '🔥 Flash Sale',
+      title: language === 'si' ? 'රාජකීය වට්ටම් 30%' : 'Get 30% OFF Sitewide',
+      subtitle: language === 'si'
+        ? 'SOLSTICE20 කේතය භාවිත කරන්න'
+        : 'Use code CEYLON22 at checkout. Limited time only!',
+      cta: 'Shop the Sale',
+      href: '/products',
+      gradient: 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 50%, #1E40AF 100%)',
+      image: 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?auto=format&fit=crop&w=800&q=80',
+    },
+  ];
+
+  const banner = banners[0];
+
   return (
-    <section className="py-16 max-w-[1440px] mx-auto px-6 lg:px-16">
-      <div
-        className="relative overflow-hidden p-8 sm:p-12 lg:p-16 transition-all duration-500 rounded-sm"
+    <section className="py-8 lg:py-12 max-w-[1440px] mx-auto px-6 lg:px-16">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.5 }}
+        className="relative overflow-hidden"
         style={{
-          background: isLight
-            ? 'linear-gradient(135deg, #FFFFFF 0%, #FAF8F2 100%)'
-            : 'linear-gradient(135deg, rgba(6, 9, 24, 0.95) 0%, rgba(2, 3, 10, 0.98) 100%)',
-          border: isLight
-            ? '1px solid rgba(212, 175, 55, 0.45)'
-            : '1px solid rgba(255, 215, 0, 0.25)',
-          boxShadow: isLight
-            ? '0 10px 30px rgba(0, 0, 0, 0.06)'
-            : '0 0 50px rgba(255, 215, 0, 0.08), inset 0 0 40px rgba(0, 255, 255, 0.03)',
-          backdropFilter: 'blur(20px)',
-          clipPath:
-            'polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 16px 100%, 0 calc(100% - 16px))',
+          background: banner.gradient,
+          borderRadius: '24px',
+          minHeight: '200px',
+          boxShadow: '0 16px 48px rgba(37,99,235,0.35)',
         }}
       >
-        {/* Holographic grid & corner decorations */}
-        <div className="absolute top-2 left-2 w-3.5 h-3.5 border-t-2 border-l-2 border-[#FFD700]" />
-        <div className="absolute top-2 right-2 w-3.5 h-3.5 border-t-2 border-r-2 border-[#00FFFF]" />
-        <div className="absolute bottom-2 left-2 w-3.5 h-3.5 border-b-2 border-l-2 border-[#00FFFF]" />
-        <div className="absolute bottom-2 right-2 w-3.5 h-3.5 border-b-2 border-r-2 border-[#FFD700]" />
+        {/* Background decorative circles */}
+        <div className="absolute -top-20 -right-20 w-64 h-64 rounded-full pointer-events-none" style={{ background: 'rgba(255,255,255,0.05)' }} />
+        <div className="absolute -bottom-10 right-1/4 w-40 h-40 rounded-full pointer-events-none" style={{ background: 'rgba(255,255,255,0.07)' }} />
+        <div className="absolute top-1/2 right-0 -translate-y-1/2 w-72 h-72 rounded-full pointer-events-none" style={{ background: 'rgba(255,255,255,0.04)' }} />
 
-        <div className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-10">
-          {/* Text Information */}
-          <div className="max-w-xl text-center lg:text-left">
-            <span
-              className="inline-flex items-center gap-1.5 px-3 py-1 text-[10px] uppercase font-bold tracking-[0.2em] mb-4"
-              style={{
-                background: isLight ? 'rgba(212, 175, 55, 0.15)' : 'rgba(255, 215, 0, 0.1)',
-                border: isLight
-                  ? '1px solid rgba(212, 175, 55, 0.4)'
-                  : '1px solid rgba(255, 215, 0, 0.35)',
-                color: isLight ? '#996515' : '#FFD700',
-                fontFamily: 'var(--font-rajdhani)',
-              }}
-            >
-              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-              <span className={language === 'si' ? 'font-sinhala' : ''}>
-                {t('privilegeBanner')}
-              </span>
+        {/* Product image on right */}
+        <div className="absolute right-0 top-0 bottom-0 w-56 sm:w-72 lg:w-96 pointer-events-none hidden sm:block overflow-hidden" style={{ borderRadius: '0 24px 24px 0' }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={banner.image}
+            alt="Sale banner"
+            className="w-full h-full object-cover opacity-25"
+          />
+          <div className="absolute inset-0" style={{ background: 'linear-gradient(to right, rgba(37,99,235,0.9) 0%, rgba(37,99,235,0.3) 100%)' }} />
+        </div>
+
+        {/* Content */}
+        <div className="relative z-10 p-8 sm:p-10 lg:p-12 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-8">
+          {/* Text */}
+          <div className="max-w-lg">
+            <span className="inline-flex items-center gap-2 px-3 py-1 text-xs font-bold rounded-full bg-white/20 text-white mb-4">
+              <Zap className="w-3.5 h-3.5" />
+              {banner.tag}
             </span>
-
-            <h2
-              className={`text-2xl sm:text-4xl lg:text-5xl font-normal leading-tight mb-4 tracking-wide ${
-                language === 'si' ? 'font-sinhala font-bold' : 'font-serif'
-              }`}
-              style={{ color: isLight ? '#0F172A' : '#FFFFFF' }}
-            >
-              {language === 'si' ? (
-                'රාජකීය සිලෝන් වට්ටම් වරප්‍රසාදය'
-              ) : (
-                <>
-                  The Island Archive{' '}
-                  <span
-                    style={{
-                      color: isLight ? '#B8860B' : '#FFD700',
-                    }}
-                  >
-                    Privilege
-                  </span>
-                </>
-              )}
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-3 leading-tight" style={{ fontFamily: 'var(--font-outfit)' }}>
+              {banner.title}
             </h2>
-
-            <p
-              className={`text-xs sm:text-sm leading-relaxed max-w-lg ${
-                language === 'si' ? 'font-sinhala text-[14px]' : ''
-              }`}
-              style={{ color: isLight ? '#475569' : 'rgba(232, 227, 216, 0.75)' }}
-            >
-              {language === 'si'
-                ? 'SOLSTICE20 කේතය භාවිත කරමින් සහතිකලත් සිලෝන් නිල් මැණික්, උඩරට සේද රෙදිපිළි සහ පූජනීය පිත්තල පහන් සඳහා 20% ක විශේෂ වට්ටමක් ලබාගන්න.'
-                : 'Enjoy 15% archival savings with code CEYLON22 across certified Ceylon sapphire jewelry, master-woven Kandyan handlooms, and ancient sacred bronze temple decor.'}
-            </p>
-          </div>
-
-          {/* Countdown Clock & CTA */}
-          <div className="flex flex-col items-center gap-6">
-            <div className="flex items-center gap-2.5 sm:gap-3.5 text-center">
-              {[
-                { label: t('days'), val: timeLeft.days },
-                { label: t('hours'), val: timeLeft.hours },
-                { label: t('minutes'), val: timeLeft.minutes },
-                { label: t('seconds'), val: timeLeft.seconds },
-              ].map((unit, i) => (
-                <div
-                  key={unit.label}
-                  className="w-16 sm:w-18 py-2.5 relative rounded-xs"
-                  style={{
-                    background: isLight ? '#FFFFFF' : 'rgba(10, 15, 35, 0.7)',
-                    border: isLight
-                      ? '1px solid rgba(212, 175, 55, 0.4)'
-                      : `1px solid ${i % 2 === 0 ? 'rgba(255,215,0,0.35)' : 'rgba(0,255,255,0.35)'}`,
-                    boxShadow: isLight
-                      ? '0 2px 8px rgba(0,0,0,0.04)'
-                      : i % 2 === 0
-                      ? '0 0 15px rgba(255,215,0,0.15)'
-                      : '0 0 15px rgba(0,255,255,0.15)',
-                  }}
-                >
-                  <span
-                    className="font-serif text-xl sm:text-2xl font-bold block"
-                    style={{
-                      color: isLight
-                        ? '#996515'
-                        : i % 2 === 0
-                        ? '#FFD700'
-                        : '#00FFFF',
-                    }}
-                  >
-                    {String(unit.val).padStart(2, '0')}
-                  </span>
-                  <span
-                    className={`text-[9px] uppercase tracking-[0.16em] block mt-0.5 font-bold ${
-                      language === 'si' ? 'font-sinhala' : ''
-                    }`}
-                    style={{
-                      color: isLight ? '#64748B' : 'rgba(232, 227, 216, 0.5)',
-                      fontFamily: 'var(--font-rajdhani)',
-                    }}
-                  >
-                    {unit.label}
-                  </span>
-                </div>
-              ))}
-            </div>
+            <p className="text-white/80 text-sm sm:text-base mb-6 leading-relaxed">{banner.subtitle}</p>
 
             <Link
-              href="/products"
+              href={banner.href}
               onClick={() => sound.playClick()}
-              className="btn-neon-gold text-xs"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm transition-all"
+              style={{
+                background: '#FFFFFF',
+                color: '#2563EB',
+                boxShadow: '0 4px 14px rgba(0,0,0,0.15)',
+              }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 8px 24px rgba(0,0,0,0.2)'; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.transform = 'translateY(0)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 4px 14px rgba(0,0,0,0.15)'; }}
             >
-              <Gem className="w-4 h-4" />
-              <span className={language === 'si' ? 'font-sinhala' : ''}>
-                {language === 'si' ? 'වරප්‍රසාදය ලබාගන්න' : 'Claim Archival Privilege'}
-              </span>
+              <Gift className="w-4 h-4" />
+              {banner.cta}
               <ArrowRight className="w-4 h-4 ml-1" />
             </Link>
           </div>
+
+          {/* Countdown */}
+          <div className="flex flex-col items-center gap-3">
+            <div className="flex items-center gap-1.5 text-white/70 text-xs font-semibold uppercase tracking-wider">
+              <Clock className="w-3.5 h-3.5" />
+              Offer Ends In
+            </div>
+            <div className="flex items-center gap-2">
+              {[
+                { label: 'Days',  val: timeLeft.days },
+                { label: 'Hrs',   val: timeLeft.hours },
+                { label: 'Min',   val: timeLeft.minutes },
+                { label: 'Sec',   val: timeLeft.seconds },
+              ].map((unit, i) => (
+                <React.Fragment key={unit.label}>
+                  <div
+                    className="flex flex-col items-center px-3 py-2 rounded-2xl min-w-[52px]"
+                    style={{ background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(8px)' }}
+                  >
+                    <span className="text-xl sm:text-2xl font-bold text-white tabular-nums" style={{ fontFamily: 'var(--font-outfit)' }}>
+                      {String(unit.val).padStart(2, '0')}
+                    </span>
+                    <span className="text-[9px] font-medium text-white/70 uppercase tracking-wider mt-0.5">
+                      {unit.label}
+                    </span>
+                  </div>
+                  {i < 3 && <span className="text-xl font-bold text-white/50 -mt-3">:</span>}
+                </React.Fragment>
+              ))}
+            </div>
+          </div>
         </div>
-      </div>
+      </motion.div>
     </section>
   );
 }
