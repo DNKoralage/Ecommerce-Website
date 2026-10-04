@@ -292,7 +292,14 @@ export const api = {
         console.warn(e);
       }
     }
-    return getLocal<SiteSettings>(STORAGE_KEYS.SETTINGS, defaultSiteSettings);
+    const stored = getLocal<SiteSettings>(STORAGE_KEYS.SETTINGS, defaultSiteSettings);
+    // Sanitise legacy brand names that were left in localStorage from old Luxe/ShopVerse era
+    const LEGACY_NAMES = ['Luxe Store', 'luxe store', 'ShopVerse', 'shopverse', 'Luxe', 'luxe'];
+    if (LEGACY_NAMES.includes(stored.site_name)) {
+      stored.site_name = 'Ceylon Times';
+      setLocal(STORAGE_KEYS.SETTINGS, stored);
+    }
+    return stored;
   },
 
   async updateSiteSettings(settings: Partial<SiteSettings>): Promise<SiteSettings> {
