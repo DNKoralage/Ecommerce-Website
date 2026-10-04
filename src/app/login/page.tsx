@@ -593,35 +593,37 @@ function LoginFormContent() {
               </form>
             )}
 
-            {/* Quick Demo Access Bar */}
+            {/* Quick Demo Access Bar — hidden in production; set display:'block' to re-enable for testing */}
             {!otpStep && mode === 'signin' && (
-              <div style={{ marginTop: 22, paddingTop: 18, borderTop: `1px solid ${borderColor}` }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: textMuted, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8, textAlign: 'center' }}>
-                  Quick Demo Access
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                  <button
-                    type="button"
-                    onClick={() => fillQuickDemo('customer')}
-                    style={{
-                      padding: '8px 10px', borderRadius: 9, fontSize: 11.5, fontWeight: 600,
-                      border: `1px solid ${borderColor}`, background: isLight ? '#F8FAFC' : '#0F172A',
-                      color: textPrimary, cursor: 'pointer', textAlign: 'center',
-                    }}
-                  >
-                    Customer Demo
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => fillQuickDemo('admin')}
-                    style={{
-                      padding: '8px 10px', borderRadius: 9, fontSize: 11.5, fontWeight: 600,
-                      border: `1px solid ${borderColor}`, background: isLight ? '#F8FAFC' : '#0F172A',
-                      color: '#2563EB', cursor: 'pointer', textAlign: 'center',
-                    }}
-                  >
-                    Admin Portal
-                  </button>
+              <div style={{ display: 'none' }}>
+                <div style={{ marginTop: 22, paddingTop: 18, borderTop: `1px solid ${borderColor}` }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: textMuted, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8, textAlign: 'center' }}>
+                    Quick Demo Access
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                    <button
+                      type="button"
+                      onClick={() => fillQuickDemo('customer')}
+                      style={{
+                        padding: '8px 10px', borderRadius: 9, fontSize: 11.5, fontWeight: 600,
+                        border: `1px solid ${borderColor}`, background: isLight ? '#F8FAFC' : '#0F172A',
+                        color: textPrimary, cursor: 'pointer', textAlign: 'center',
+                      }}
+                    >
+                      Customer Demo
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => fillQuickDemo('admin')}
+                      style={{
+                        padding: '8px 10px', borderRadius: 9, fontSize: 11.5, fontWeight: 600,
+                        border: `1px solid ${borderColor}`, background: isLight ? '#F8FAFC' : '#0F172A',
+                        color: '#2563EB', cursor: 'pointer', textAlign: 'center',
+                      }}
+                    >
+                      Admin Portal
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
