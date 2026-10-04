@@ -160,13 +160,13 @@ export function markCurrentUserVerified(identifier?: string): void {
 
   try {
     // 1. Update active session user
-    const rawUser = localStorage.getItem('ceylon_user') || localStorage.getItem('luxe_user');
+    const rawUser = localStorage.getItem('ceylon_user');
     if (rawUser) {
       const user = JSON.parse(rawUser);
       user.is_verified = true;
       user.phone_verified = true;
       localStorage.setItem('ceylon_user', JSON.stringify(user));
-      localStorage.setItem('luxe_user', JSON.stringify(user));
+      localStorage.setItem('ceylon_user', JSON.stringify(user));
     }
 
     // 2. Update registered users database

@@ -118,7 +118,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     window.addEventListener('orders_updated', refreshData);
     window.addEventListener('bookings_updated', refreshData);
     window.addEventListener('storage', (e) => {
-      if (e.key === 'luxe_orders' || e.key === 'luxe_booking_requests') refreshData();
+      if (e.key === 'ceylon_orders' || e.key === 'ceylon_booking_requests') refreshData();
     });
     return () => {
       window.removeEventListener('orders_updated', refreshData);

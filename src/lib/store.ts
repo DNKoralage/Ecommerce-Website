@@ -27,17 +27,36 @@ import { triggerOrderNotifications } from './notifications';
 
 // Browser persistent store keys
 const STORAGE_KEYS = {
-  PRODUCTS: 'luxe_products',
-  ORDERS: 'luxe_orders',
-  SETTINGS: 'luxe_settings',
-  COUPONS: 'luxe_coupons',
-  REVIEWS: 'luxe_reviews',
-  WISHLIST: 'luxe_wishlist',
-  HERO: 'luxe_hero_slides',
-  CATEGORIES: 'luxe_categories',
-  CUSTOMIZATION: 'luxe_site_customization',
-  BOOKINGS: 'luxe_booking_requests',
+  PRODUCTS: 'ceylon_products',
+  ORDERS: 'ceylon_orders',
+  SETTINGS: 'ceylon_settings',
+  COUPONS: 'ceylon_coupons',
+  REVIEWS: 'ceylon_reviews',
+  WISHLIST: 'ceylon_wishlist',
+  HERO: 'ceylon_hero_slides',
+  CATEGORIES: 'ceylon_categories',
+  CUSTOMIZATION: 'ceylon_site_customization',
+  BOOKINGS: 'ceylon_booking_requests',
 };
+
+// Migrate old 'luxe_' keys to 'ceylon_' keys on first load
+if (typeof window !== 'undefined') {
+  const OLD_PREFIX = 'luxe_';
+  const NEW_PREFIX = 'ceylon_';
+  try {
+    const oldKeys = [
+      'products', 'orders', 'settings', 'coupons', 'reviews',
+      'wishlist', 'hero_slides', 'categories', 'site_customization', 'booking_requests',
+    ];
+    oldKeys.forEach(k => {
+      const oldKey = OLD_PREFIX + k;
+      const newKey = NEW_PREFIX + k;
+      if (!localStorage.getItem(newKey) && localStorage.getItem(oldKey)) {
+        localStorage.setItem(newKey, localStorage.getItem(oldKey)!);
+      }
+    });
+  } catch {}
+}
 
 const getLocal = <T>(key: string, fallback: T): T => {
   if (typeof window === 'undefined') return fallback;
@@ -192,18 +211,52 @@ export const api = {
   async saveProduct(product: Product): Promise<Product> {
     const products = getLocal<Product[]>(STORAGE_KEYS.PRODUCTS, defaultProducts);
     const index = products.findIndex((p) => p.id === product.id);
+    let savedProduct: Product;
     if (index >= 0) {
-      products[index] = { ...product, updated_at: new Date().toISOString() };
+      savedProduct = { ...product, updated_at: new Date().toISOString() };
+      products[index] = savedProduct;
     } else {
-      products.unshift({
+      savedProduct = {
         ...product,
         id: `prod-${Date.now()}`,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-      });
+      };
+      products.unshift(savedProduct);
     }
     setLocal(STORAGE_KEYS.PRODUCTS, products);
-    return product;
+
+    // Write-through to Supabase when configured
+    if (isSupabaseConfigured() && supabase) {
+      try {
+        await supabase.from('products').upsert([{
+          id: savedProduct.id,
+          title: savedProduct.title,
+          slug: savedProduct.slug,
+          description: savedProduct.description,
+          category_id: savedProduct.category_id,
+          price: savedProduct.price,
+          sale_price: savedProduct.sale_price,
+          sku: savedProduct.sku,
+          stock_quantity: savedProduct.stock_quantity,
+          track_inventory: savedProduct.track_inventory,
+          allow_backorders: savedProduct.allow_backorders,
+          status: savedProduct.status,
+          tags: savedProduct.tags,
+          created_at: savedProduct.created_at,
+          updated_at: savedProduct.updated_at,
+        }], { onConflict: 'id' });
+      } catch (e) {
+        console.warn('Supabase product sync error:', e);
+      }
+    }
+
+    // Dispatch event so other components update
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('products_updated'));
+    }
+
+    return savedProduct;
   },
 
   async deleteProduct(id: string): Promise<boolean> {
@@ -246,6 +299,22 @@ export const api = {
     const current = getLocal<SiteSettings>(STORAGE_KEYS.SETTINGS, defaultSiteSettings);
     const updated = { ...current, ...settings, updated_at: new Date().toISOString() };
     setLocal(STORAGE_KEYS.SETTINGS, updated);
+
+    // Write-through to Supabase when configured
+    if (isSupabaseConfigured() && supabase) {
+      try {
+        await supabase.from('site_settings').upsert([updated], { onConflict: 'id' });
+      } catch (e) {
+        console.warn('Supabase settings sync error:', e);
+      }
+    }
+
+    // Dispatch event so other tabs/components update
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new StorageEvent('storage', { key: STORAGE_KEYS.SETTINGS }));
+      window.dispatchEvent(new CustomEvent('settings_updated'));
+    }
+
     return updated;
   },
 

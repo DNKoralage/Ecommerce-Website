@@ -91,7 +91,7 @@ export default function HomePage() {
     >
       {/* ─── Header ─── */}
       <Header
-        siteName={siteSettings.site_name || 'ShopVerse'}
+        siteName={siteSettings.site_name || 'Ceylon Times'}
         logoUrl={siteSettings.logo_url}
         announcementText={siteSettings.announcement_bar_text}
         announcementActive={siteSettings.announcement_bar_active}
@@ -313,7 +313,7 @@ export default function HomePage() {
             >
               <div>
                 <h3 className="text-xl font-bold text-white mb-1.5" style={{ fontFamily: 'var(--font-outfit)' }}>
-                  Sell on ShopVerse
+                  Sell on Ceylon Times
                 </h3>
                 <p className="text-white/80 text-sm leading-relaxed max-w-md">
                   Join hundreds of verified vendors. Set up your store in minutes — zero listing fees, COD support included.

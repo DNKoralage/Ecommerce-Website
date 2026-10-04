@@ -5,7 +5,7 @@ import { Plus, Trash2, AlertCircle, ToggleLeft, ToggleRight, Ticket } from 'luci
 import { api } from '@/lib/store';
 import { Coupon } from '@/types';
 
-const LOCAL_KEY = 'luxe_coupons';
+const LOCAL_KEY = 'ceylon_coupons';
 function saveCoupons(coupons: Coupon[]) {
   if (typeof window !== 'undefined') localStorage.setItem(LOCAL_KEY, JSON.stringify(coupons));
 }

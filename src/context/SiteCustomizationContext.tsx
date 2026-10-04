@@ -25,7 +25,7 @@ export function SiteCustomizationProvider({ children }: { children: React.ReactN
   useEffect(() => {
     load();
     const handler = (e: StorageEvent) => {
-      if (e.key === 'luxe_site_customization' || e.key === null) {
+      if (e.key === 'ceylon_site_customization' || e.key === null) {
         load();
       }
     };

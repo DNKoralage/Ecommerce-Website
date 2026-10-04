@@ -39,7 +39,7 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
 
   useEffect(() => {
     try {
-      const stored = localStorage.getItem('shopverse_recent_searches');
+      const stored = localStorage.getItem('ceylon_recent_searches');
       if (stored) setRecentSearches(JSON.parse(stored));
     } catch (_e) {}
   }, []);
@@ -69,7 +69,7 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
   const saveSearch = (term: string) => {
     const updated = [term, ...recentSearches.filter((s) => s.toLowerCase() !== term.toLowerCase())].slice(0, 6);
     setRecentSearches(updated);
-    try { localStorage.setItem('shopverse_recent_searches', JSON.stringify(updated)); } catch (_e) {}
+    try { localStorage.setItem('ceylon_recent_searches', JSON.stringify(updated)); } catch (_e) {}
   };
 
   return (

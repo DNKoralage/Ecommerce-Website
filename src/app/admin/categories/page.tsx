@@ -11,7 +11,7 @@ interface CategoryFormProps {
   onSave: (c: Category) => void;
 }
 
-const LOCAL_KEY = 'luxe_categories';
+const LOCAL_KEY = 'ceylon_categories';
 
 function saveCategories(cats: Category[]) {
   if (typeof window !== 'undefined') {

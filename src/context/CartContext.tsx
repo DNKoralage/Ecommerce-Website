@@ -44,7 +44,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   // Load cart from localStorage
   useEffect(() => {
     try {
-      const saved = localStorage.getItem('luxe_cart');
+      const saved = localStorage.getItem('ceylon_cart');
       if (saved) {
         setItems(JSON.parse(saved));
       }
@@ -56,7 +56,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   // Save cart to localStorage
   useEffect(() => {
     try {
-      localStorage.setItem('luxe_cart', JSON.stringify(items));
+      localStorage.setItem('ceylon_cart', JSON.stringify(items));
     } catch (e) {
       console.error(e);
     }

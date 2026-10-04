@@ -146,7 +146,7 @@ export default function AdminDashboard() {
     window.addEventListener('orders_updated', handleLiveUpdate);
     window.addEventListener('bookings_updated', handleLiveUpdate);
     window.addEventListener('storage', (e) => {
-      if (e.key === 'luxe_orders' || e.key === 'luxe_booking_requests') handleLiveUpdate();
+      if (e.key === 'ceylon_orders' || e.key === 'ceylon_booking_requests') handleLiveUpdate();
     });
     const loadChat = () => {
       try {

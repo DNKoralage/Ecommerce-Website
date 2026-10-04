@@ -23,7 +23,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   useEffect(() => {
     try {
-      const stored = localStorage.getItem('shopverse_theme') as Theme;
+      const stored = localStorage.getItem('ceylon_theme') as Theme;
       if (stored === 'dark' || stored === 'light') {
         setThemeState(stored);
         applyTheme(stored);
@@ -56,7 +56,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setThemeState(newTheme);
     applyTheme(newTheme);
     try {
-      localStorage.setItem('shopverse_theme', newTheme);
+      localStorage.setItem('ceylon_theme', newTheme);
     } catch (_e) {}
   };
 

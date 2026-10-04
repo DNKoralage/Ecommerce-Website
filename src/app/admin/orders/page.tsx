@@ -231,7 +231,7 @@ function OrdersContent() {
     window.addEventListener('orders_updated', handleOrdersUpdate);
     window.addEventListener('bookings_updated', handleOrdersUpdate);
     window.addEventListener('storage', (e) => {
-      if (e.key === 'luxe_orders' || e.key === 'luxe_booking_requests') handleOrdersUpdate();
+      if (e.key === 'ceylon_orders' || e.key === 'ceylon_booking_requests') handleOrdersUpdate();
     });
     return () => {
       window.removeEventListener('orders_updated', handleOrdersUpdate);

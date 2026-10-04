@@ -120,7 +120,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Sync session state from localStorage
   const refreshUserFromStorage = useCallback(() => {
     try {
-      const stored = localStorage.getItem('ceylon_user') || localStorage.getItem('luxe_user');
+      const stored = localStorage.getItem('ceylon_user');
       if (stored) {
         setUser(JSON.parse(stored));
       } else {
@@ -136,7 +136,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(false);
 
     const handleStorage = (e: StorageEvent) => {
-      if (e.key === 'ceylon_user' || e.key === 'luxe_user') {
+      if (e.key === 'ceylon_user') {
         refreshUserFromStorage();
       }
     };
@@ -182,7 +182,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(adminUser);
       try {
         localStorage.setItem('ceylon_user', JSON.stringify(adminUser));
-        localStorage.setItem('luxe_user', JSON.stringify(adminUser));
+        localStorage.setItem('ceylon_user', JSON.stringify(adminUser));
       } catch (_e) {}
       return { success: true };
     }
@@ -214,7 +214,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(secAdminUser);
       try {
         localStorage.setItem('ceylon_user', JSON.stringify(secAdminUser));
-        localStorage.setItem('luxe_user', JSON.stringify(secAdminUser));
       } catch (_e) {}
       return { success: true };
     }
@@ -247,7 +246,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(customerProfile);
       try {
         localStorage.setItem('ceylon_user', JSON.stringify(customerProfile));
-        localStorage.setItem('luxe_user', JSON.stringify(customerProfile));
       } catch (_e) {}
       return { success: true };
     }
@@ -265,7 +263,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(customerUser);
     try {
       localStorage.setItem('ceylon_user', JSON.stringify(customerUser));
-      localStorage.setItem('luxe_user', JSON.stringify(customerUser));
     } catch (_e) {}
     return { success: true };
   };
@@ -336,7 +333,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(activeProfile);
     try {
       localStorage.setItem('ceylon_user', JSON.stringify(activeProfile));
-      localStorage.setItem('luxe_user', JSON.stringify(activeProfile));
     } catch (_e) {}
 
     // Automatically trigger OTP dispatch for newly created account
@@ -372,7 +368,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(updatedUser);
       try {
         localStorage.setItem('ceylon_user', JSON.stringify(updatedUser));
-        localStorage.setItem('luxe_user', JSON.stringify(updatedUser));
       } catch (_e) {}
     }
     return res;
@@ -457,7 +452,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(targetUser);
     try {
       localStorage.setItem('ceylon_user', JSON.stringify(targetUser));
-      localStorage.setItem('luxe_user', JSON.stringify(targetUser));
     } catch (_e) {}
   };
 
@@ -465,7 +459,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
     try {
       localStorage.removeItem('ceylon_user');
-      localStorage.removeItem('luxe_user');
     } catch (_e) {}
   };
 

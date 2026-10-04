@@ -121,7 +121,7 @@ function LoginFormContent() {
           sound.playSuccess();
           setTimeout(() => {
             try {
-              const stored = localStorage.getItem('ceylon_user') || localStorage.getItem('luxe_user');
+              const stored = localStorage.getItem('ceylon_user');
               const parsed = stored ? JSON.parse(stored) : null;
               if (parsed?.role === 'admin') {
                 router.push(redirectPath.startsWith('/admin') ? redirectPath : '/admin');
