@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
@@ -109,9 +109,9 @@ function ConfirmDialog({ msg, onOk, onCancel }: { msg: string; onOk: () => void;
   );
 }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+/* =====================================================================
    NAVIGATION TAB
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+   ===================================================================== */
 function NavTab({ links, onChange }: { links: NavLink[]; onChange: (l: NavLink[]) => void }) {
   const T = useTokens();
   const [editId, setEditId] = useState<string | null>(null);
@@ -215,9 +215,9 @@ function NavTab({ links, onChange }: { links: NavLink[]; onChange: (l: NavLink[]
   );
 }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+/* =====================================================================
    FOOTER TAB
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+   ===================================================================== */
 function FooterTab({ tagline, copyright, columns, socialLinks, badges, onChange }: {
   tagline: string; copyright: string; columns: FooterColumn[];
   socialLinks: SocialLink[]; badges: { id: string; icon: string; text: string; enabled: boolean }[];
@@ -351,7 +351,9 @@ function FooterTab({ tagline, copyright, columns, socialLinks, badges, onChange 
   );
 }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+/* =====================================================================
+   HERO SLIDES TAB
+   ===================================================================== */
 function HeroTab({ slides, onChange }: { slides: HeroSlide[]; onChange: (s: HeroSlide[]) => void }) {
   const T = useTokens();
   const [active, setActive] = useState(slides[0]?.id ?? '');
@@ -427,7 +429,7 @@ function HeroTab({ slides, onChange }: { slides: HeroSlide[]; onChange: (s: Hero
               )}
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-              <div><label style={T.lbl}>Badge Text</label><input value={slide.badge || ''} onChange={e => upd({ badge: e.target.value })} style={T.inp} placeholder="âœ¦ Collection" /></div>
+              <div><label style={T.lbl}>Badge Text</label><input value={slide.badge || ''} onChange={e => upd({ badge: e.target.value })} style={T.inp} placeholder="✦ Collection" /></div>
               <div><label style={T.lbl}>CTA Link</label><input value={slide.cta_link} onChange={e => upd({ cta_link: e.target.value })} style={T.inp} placeholder="/products" /></div>
             </div>
             <div><label style={T.lbl}>Heading</label><input value={slide.heading} onChange={e => upd({ heading: e.target.value })} style={T.inp} /></div>
@@ -445,9 +447,9 @@ function HeroTab({ slides, onChange }: { slides: HeroSlide[]; onChange: (s: Hero
   );
 }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+/* =====================================================================
    IDENTITY TAB
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+   ===================================================================== */
 function IdentityTab({ s, onChange }: {
   s: Pick<SiteSettings, 'site_name' | 'tagline' | 'logo_url' | 'announcement_bar_active' | 'announcement_bar_text' | 'announcement_bar_link'>;
   onChange: (p: Partial<typeof s>) => void;
@@ -507,9 +509,9 @@ function IdentityTab({ s, onChange }: {
   );
 }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+/* =====================================================================
    MAIN PAGE
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+   ===================================================================== */
 export default function AdminCustomizePage() {
   const T = useTokens();
   const [tab, setTab] = useState<Tab>('navigation');
