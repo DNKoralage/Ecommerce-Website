@@ -338,7 +338,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Automatically trigger OTP dispatch for newly created account
     const target = activeProfile.phone || activeProfile.email;
     const channel = activeProfile.phone ? 'phone' : 'email';
-    sendOtp(target, channel).catch(() => {});
+    sendOtp(target, channel, activeProfile.full_name).catch(() => {});
 
     return { success: true };
   };
@@ -349,7 +349,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     const target = channel === 'phone' ? (user.phone || user.email) : user.email;
     const effectiveChannel = channel === 'phone' && !user.phone ? 'email' : channel;
-    const res = await sendOtp(target, effectiveChannel);
+    const res = await sendOtp(target, effectiveChannel, user.full_name);
     return res;
   };
 

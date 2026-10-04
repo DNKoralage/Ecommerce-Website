@@ -38,13 +38,14 @@ function saveStoredOtps(otps: Record<string, StoredOtp>): void {
 
 /**
  * Sends a 6-digit OTP code to the provided phone or email.
- * In production, integrates with SMS gateways (Dialog, Mobitel, Twilio) or Email providers (Resend, SendGrid).
- * In this environment, provides simulated delivery and returns the code for live demo testing.
+ * Calls /api/send-otp to deliver via Resend (email) or Twilio (SMS).
+ * Falls back gracefully if the provider is not configured.
  */
 export async function sendOtp(
   target: string,
-  channel: 'phone' | 'email' = 'phone'
-): Promise<{ success: boolean; otp: string; message: string }> {
+  channel: 'phone' | 'email' = 'phone',
+  name?: string
+): Promise<{ success: boolean; otp: string; message: string; delivered?: boolean }> {
   const cleanTarget = target.trim().toLowerCase();
   if (!cleanTarget) {
     return { success: false, otp: '', message: 'Please provide a valid phone number or email address.' };
@@ -65,22 +66,52 @@ export async function sendOtp(
   otps[cleanTarget] = otpRecord;
   saveStoredOtps(otps);
 
-  // Dispatch an event for reactive UI toasts/alerts
+  // ── Attempt real delivery via server API ─────────────────────────────────────
+  let delivered = false;
+  try {
+    const res = await fetch('/api/send-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ target: cleanTarget, channel, code, name }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      delivered = data.delivered === true;
+    }
+  } catch (err) {
+    console.warn('[OTP] API call failed, code is available in UI:', err);
+  }
+
+  // Dispatch event AFTER delivery attempt so UI knows whether code was sent
   if (typeof window !== 'undefined') {
     window.dispatchEvent(
       new CustomEvent('ceylon_otp_dispatched', {
-        detail: { target: cleanTarget, channel, code },
+        detail: { target: cleanTarget, channel, code, delivered },
       })
     );
   }
 
-  const destinationDesc = channel === 'phone' ? `SMS to ${target}` : `Email to ${target}`;
+  const destinationDesc = channel === 'phone' ? `SMS to ${target}` : `email to ${target}`;
+
+
+  if (delivered) {
+    return {
+      success: true,
+      otp: code,
+      delivered: true,
+      message: `Verification code sent via ${destinationDesc}. Please check and enter the 6-digit code.`,
+    };
+  }
+
+  // Provider not configured — show code in UI as fallback
   return {
     success: true,
     otp: code,
-    message: `Verification OTP dispatched via ${destinationDesc}. (Demo Code: ${code})`,
+    delivered: false,
+    message: `Verification code sent to ${target}. (Demo Code: ${code})`,
   };
 }
+
 
 /**
  * Validates the entered OTP code against the stored record for the given target.

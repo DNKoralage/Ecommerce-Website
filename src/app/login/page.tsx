@@ -57,12 +57,15 @@ function LoginFormContent() {
   const [successMsg, setSuccessMsg] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Listen for OTP dispatched event
+  // Listen for OTP dispatched event — only show demo hint if NOT delivered via email/SMS
   useEffect(() => {
     const handleOtpDispatched = (e: Event) => {
-      const customEvent = e as CustomEvent<{ target: string; code: string }>;
-      if (customEvent.detail?.code) {
+      const customEvent = e as CustomEvent<{ target: string; code: string; delivered?: boolean }>;
+      // Show the on-screen code only when real delivery failed (provider not configured)
+      if (customEvent.detail?.code && !customEvent.detail?.delivered) {
         setDemoCodeHint(customEvent.detail.code);
+      } else {
+        setDemoCodeHint(null); // hide — code was sent to user's email/phone
       }
     };
     window.addEventListener('ceylon_otp_dispatched', handleOtpDispatched);
@@ -110,7 +113,8 @@ function LoginFormContent() {
           const target = otpChannel === 'phone' && phone ? phone : email;
           setOtpTarget(target);
           setOtpStep(true);
-          setSuccessMsg(`Verification code sent to ${target}. Please enter the 6-digit OTP code to activate your account.`);
+          const channelLabel = otpChannel === 'email' ? `email (${target})` : `phone (${target})`;
+          setSuccessMsg(`Verification code sent to your ${channelLabel}. Please check and enter the 6-digit code.`);
           sound.playNotification();
         } else {
           setError(res.message || 'Registration failed. Please try again.');
